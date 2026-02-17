@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Australian Cycling Events Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <link rel="stylesheet" href="static/style.css" />
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>Australian Cycling Events</h1>
+            <p class="subtitle">Find cycling events near you</p>
+        </header>
+
+        <div id="controls">
+            <div class="filter-group">
+                <label>Discipline</label>
+                <div id="discipline-filters" class="chip-group"></div>
+            </div>
+
+            <div class="filter-group">
+                <label>Source</label>
+                <div id="source-filters" class="chip-group"></div>
+            </div>
+
+            <div class="filter-group">
+                <label>State</label>
+                <div id="state-filters" class="chip-group"></div>
+            </div>
+
+            <div class="filter-group">
+                <label>Distance from you</label>
+                <div class="distance-control">
+                    <input type="range" id="distance-slider" min="0" max="2000" value="2000" step="10" />
+                    <span id="distance-label">Any distance</span>
+                </div>
+                <button id="locate-btn" class="btn btn-sm">Use my location</button>
+            </div>
+
+            <div class="filter-group">
+                <label>Date range</label>
+                <div class="date-range">
+                    <input type="date" id="date-from" />
+                    <span>to</span>
+                    <input type="date" id="date-to" />
+                </div>
+            </div>
+
+            <div class="event-count">
+                Showing <strong id="event-count">0</strong> events
+            </div>
+        </div>
+
+        <div id="main">
+            <div id="map"></div>
+            <div id="event-list">
+                <div id="event-list-header">
+                    <h2>Events</h2>
+                    <select id="sort-select">
+                        <option value="date">Sort by date</option>
+                        <option value="distance">Sort by distance</option>
+                        <option value="name">Sort by name</option>
+                    </select>
+                </div>
+                <div id="event-list-items"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <script src="static/app.js"></script>
+</body>
+</html>
