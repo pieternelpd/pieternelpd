@@ -1,0 +1,378 @@
+/* Reset & base */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface-hover: #242836;
+    --border: #2e3347;
+    --text: #e4e6f0;
+    --text-muted: #8b8fa8;
+    --accent: #4f8cff;
+    --accent-hover: #6ba0ff;
+    --road: #4f8cff;
+    --criterium: #f59e0b;
+    --track: #a855f7;
+    --mtb: #22c55e;
+    --gravel: #d97706;
+    --bmx: #ef4444;
+    --cyclocross: #14b8a6;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    min-height: 100vh;
+}
+
+#app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* Header */
+header {
+    padding: 16px 24px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+}
+
+header h1 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+header .subtitle {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* Controls */
+#controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 12px 24px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    align-items: flex-end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.filter-group > label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Chip buttons */
+.chip-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.chip {
+    padding: 4px 12px;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.chip:hover {
+    background: var(--surface-hover);
+    color: var(--text);
+}
+
+.chip.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+/* Discipline-specific chip colors */
+.chip.active[data-value="road"]       { background: var(--road); border-color: var(--road); }
+.chip.active[data-value="criterium"]  { background: var(--criterium); border-color: var(--criterium); color: #000; }
+.chip.active[data-value="track"]      { background: var(--track); border-color: var(--track); }
+.chip.active[data-value="mtb"]        { background: var(--mtb); border-color: var(--mtb); color: #000; }
+.chip.active[data-value="gravel"]     { background: var(--gravel); border-color: var(--gravel); }
+.chip.active[data-value="bmx"]        { background: var(--bmx); border-color: var(--bmx); }
+.chip.active[data-value="cyclocross"] { background: var(--cyclocross); border-color: var(--cyclocross); }
+
+/* Distance */
+.distance-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#distance-slider {
+    width: 140px;
+    accent-color: var(--accent);
+}
+
+#distance-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    min-width: 80px;
+}
+
+/* Buttons */
+.btn {
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface-hover);
+    color: var(--text);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.btn:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-sm { padding: 4px 10px; font-size: 0.75rem; }
+
+/* Date range */
+.date-range {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.date-range input[type="date"] {
+    background: var(--surface-hover);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+}
+
+.date-range span {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+.event-count {
+    margin-left: auto;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    align-self: flex-end;
+    padding-bottom: 2px;
+}
+
+/* Main layout */
+#main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+}
+
+#map {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Event list panel */
+#event-list {
+    width: 380px;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#event-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+#event-list-header h2 {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+#sort-select {
+    background: var(--surface-hover);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+}
+
+#event-list-items {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+/* Event card */
+.event-card {
+    padding: 12px;
+    margin-bottom: 6px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.event-card:hover {
+    border-color: var(--accent);
+    background: var(--surface-hover);
+}
+
+.event-card.highlighted {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+}
+
+.event-card .event-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.event-card .event-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.event-card .event-meta span {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.discipline-badge {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.discipline-badge.road       { background: var(--road); color: #fff; }
+.discipline-badge.criterium  { background: var(--criterium); color: #000; }
+.discipline-badge.track      { background: var(--track); color: #fff; }
+.discipline-badge.mtb        { background: var(--mtb); color: #000; }
+.discipline-badge.gravel     { background: var(--gravel); color: #fff; }
+.discipline-badge.bmx        { background: var(--bmx); color: #fff; }
+.discipline-badge.cyclocross { background: var(--cyclocross); color: #fff; }
+
+.event-card .event-description {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 6px;
+    line-height: 1.4;
+}
+
+.event-card .event-distance {
+    font-size: 0.75rem;
+    color: var(--accent);
+    font-weight: 500;
+}
+
+/* Leaflet popup */
+.leaflet-popup-content-wrapper {
+    background: var(--surface) !important;
+    color: var(--text) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
+}
+
+.leaflet-popup-content {
+    margin: 12px !important;
+    font-size: 0.85rem !important;
+    line-height: 1.5 !important;
+}
+
+.leaflet-popup-content .popup-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin-bottom: 6px;
+}
+
+.leaflet-popup-content .popup-meta {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+.leaflet-popup-tip {
+    background: var(--surface) !important;
+}
+
+/* Scrollbar */
+#event-list-items::-webkit-scrollbar { width: 6px; }
+#event-list-items::-webkit-scrollbar-track { background: transparent; }
+#event-list-items::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* Responsive */
+@media (max-width: 900px) {
+    #main {
+        flex-direction: column;
+    }
+    #map {
+        height: 50vh;
+    }
+    #event-list {
+        width: 100%;
+        border-left: none;
+        border-top: 1px solid var(--border);
+    }
+    #controls {
+        padding: 10px 16px;
+        gap: 10px;
+    }
+}
+
+@media (max-width: 600px) {
+    header { padding: 12px 16px; }
+    header h1 { font-size: 1.1rem; }
+    .event-count { display: none; }
+}
+
+/* Cluster override */
+.marker-cluster-small, .marker-cluster-medium, .marker-cluster-large {
+    background: rgba(79, 140, 255, 0.3) !important;
+}
+.marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div {
+    background: var(--accent) !important;
+    color: #fff !important;
+    font-weight: 700;
+}
+
+/* Location marker */
+.user-location-marker {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 3px solid #fff;
+    box-shadow: 0 0 8px rgba(79, 140, 255, 0.6);
+}
