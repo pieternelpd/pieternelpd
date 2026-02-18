@@ -137,27 +137,34 @@ class WestCoastMastersScraper(BaseScraper):
             logger.info(f"[{self.SOURCE_NAME}] Got {len(self.events)} events from EntryBoss JSON")
             return self.events
 
-        # Strategy 2: Try EntryBoss with JS extraction (Playwright)
+        # Strategy 2: Try EntryBoss HTML via cloudscraper (bypasses Cloudflare)
+        self._scrape_entryboss_cf()
+
+        if self.events:
+            logger.info(f"[{self.SOURCE_NAME}] Got {len(self.events)} events from EntryBoss cloudscraper")
+            return self.events
+
+        # Strategy 3: Try EntryBoss with JS extraction (Playwright)
         self._scrape_entryboss_js()
 
         if self.events:
             logger.info(f"[{self.SOURCE_NAME}] Got {len(self.events)} events from EntryBoss JS")
             return self.events
 
-        # Strategy 3: Try EntryBoss with HTML parsing
+        # Strategy 4: Try EntryBoss with HTML parsing
         self._scrape_entryboss_html()
 
         if self.events:
             logger.info(f"[{self.SOURCE_NAME}] Got {len(self.events)} events from EntryBoss HTML")
             return self.events
 
-        # Strategy 4: Try WCMCC calendar pages
+        # Strategy 5: Try WCMCC calendar pages
         for url in CALENDAR_URLS:
             html = self._fetch_page(url, wait_for="table, .tribe-events, article", wait_ms=3000)
             if html:
                 self._parse_calendar(html, url)
 
-        # Strategy 5: Try WestCycle
+        # Strategy 6: Try WestCycle
         html = self._fetch_page(WESTCYCLE_URL, wait_for=".event, article", wait_ms=3000)
         if html:
             self._parse_westcycle(html)
@@ -167,9 +174,24 @@ class WestCoastMastersScraper(BaseScraper):
 
     def _try_entryboss_json(self):
         """Try Rails .json endpoint on EntryBoss (common Rails convention)."""
-        data = self._fetch_json_via_browser(ENTRYBOSS_JSON_URL)
+        data = None
+
+        # Try cloudscraper first (bypasses Cloudflare JS challenges)
+        resp = self._make_cf_request(ENTRYBOSS_JSON_URL, headers={
+            "Accept": "application/json",
+        })
+        if resp:
+            try:
+                data = resp.json()
+            except Exception:
+                logger.debug(f"[{self.SOURCE_NAME}] Cloudscraper .json response was not JSON")
+
+        # Try Playwright browser
         if not data:
-            # Also try plain HTTP request
+            data = self._fetch_json_via_browser(ENTRYBOSS_JSON_URL)
+
+        # Try plain HTTP request
+        if not data:
             resp = self._make_request(ENTRYBOSS_JSON_URL, headers={
                 "Accept": "application/json",
             })
@@ -218,6 +240,99 @@ class WestCoastMastersScraper(BaseScraper):
                     ))
             except Exception as e:
                 logger.debug(f"Failed to parse EntryBoss JSON item: {e}")
+
+    def _scrape_entryboss_cf(self):
+        """Scrape EntryBoss calendar HTML using cloudscraper to bypass Cloudflare."""
+        resp = self._make_cf_request(ENTRYBOSS_URL)
+        if not resp:
+            return
+
+        html = resp.text
+        logger.info(f"[{self.SOURCE_NAME}] EntryBoss CF page: {len(html)} bytes")
+
+        soup = BeautifulSoup(html, "lxml")
+
+        # Look for race links
+        race_links = soup.select("a[href*='/races/']")
+        logger.info(f"[{self.SOURCE_NAME}] EntryBoss CF: {len(race_links)} race links found")
+
+        for link in race_links:
+            try:
+                name = link.get_text(strip=True)
+                if not name or len(name) <= 3:
+                    continue
+
+                url = link.get("href", "")
+                if url and not url.startswith("http"):
+                    url = "https://entryboss.cc" + url
+
+                # Look for date in parent element
+                date_str = ""
+                parent = link.find_parent(["tr", "div", "li", "article", "section"])
+                if parent:
+                    time_el = parent.find("time")
+                    if time_el:
+                        date_str = time_el.get("datetime", time_el.get_text(strip=True))
+                    else:
+                        parent_text = parent.get_text()
+                        date_match = re.search(
+                            r'(\d{1,2}[\s/\-](?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*[\s/\-]\d{2,4})',
+                            parent_text, re.IGNORECASE
+                        ) or re.search(r'(\d{4}-\d{2}-\d{2})', parent_text)
+                        if date_match:
+                            date_str = date_match.group(1)
+
+                venue_info = self._match_venue(name)
+                self.events.append(CyclingEvent(
+                    name=name[:200],
+                    date=self._normalise_date(date_str),
+                    end_date=None,
+                    venue=venue_info.get("address", "WA") if venue_info else "WA",
+                    address=venue_info.get("address", "WA") if venue_info else "WA",
+                    lat=venue_info.get("lat") if venue_info else None,
+                    lng=venue_info.get("lng") if venue_info else None,
+                    discipline=self._guess_discipline(name),
+                    organiser="West Coast Masters CC",
+                    source=self.SOURCE_NAME,
+                    url=url if url else ENTRYBOSS_URL,
+                    state="WA",
+                ))
+            except Exception as e:
+                logger.debug(f"Failed to parse EntryBoss CF link: {e}")
+
+        if self.events:
+            return
+
+        # Fallback: try table rows
+        for row in soup.select("table tr"):
+            try:
+                cells = row.select("td")
+                if len(cells) >= 2:
+                    date_str = cells[0].get_text(strip=True)
+                    name = cells[1].get_text(strip=True)
+                    link = row.select_one("a[href]")
+                    url = link["href"] if link else None
+                    if url and not url.startswith("http"):
+                        url = "https://entryboss.cc" + url
+
+                    if name and len(name) > 3 and not self._is_header(name):
+                        venue_info = self._match_venue(name)
+                        self.events.append(CyclingEvent(
+                            name=name[:200],
+                            date=self._normalise_date(date_str),
+                            end_date=None,
+                            venue=venue_info.get("address", "WA") if venue_info else "WA",
+                            address=venue_info.get("address", "WA") if venue_info else "WA",
+                            lat=venue_info.get("lat") if venue_info else None,
+                            lng=venue_info.get("lng") if venue_info else None,
+                            discipline=self._guess_discipline(name),
+                            organiser="West Coast Masters CC",
+                            source=self.SOURCE_NAME,
+                            url=url if url else ENTRYBOSS_URL,
+                            state="WA",
+                        ))
+            except Exception as e:
+                logger.debug(f"Failed to parse EntryBoss CF table row: {e}")
 
     def _scrape_entryboss_js(self):
         """Use Playwright JS extraction to get events from EntryBoss page."""
