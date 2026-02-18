@@ -26,7 +26,6 @@ scraper/
   base.py           - Base scraper class and CyclingEvent dataclass
   auscycling.py     - AusCycling event scraper
   westcoast_masters.py - West Coast Masters CC scraper
-  seed_data.py      - Fallback seed data based on real events
   run.py            - Scraper runner (outputs data/events.json)
 ```
 
@@ -44,18 +43,17 @@ python -m http.server 8000
 
 ```bash
 pip install -r scraper/requirements.txt
+playwright install chromium --with-deps
 python -m scraper.run
 ```
 
-The scraper attempts live data from AusCycling, WCMCC (WordPress API), EntryBoss, and WestCycle. If sources are unavailable (common due to bot protection), it falls back to curated seed data.
+The scraper uses Playwright (headless Chromium) to bypass Cloudflare bot protection and render JS-driven content from AusCycling, EntryBoss, WCMCC, and WestCycle.
 
 ## Data Sources
 
 | Source | URL | Method |
 |--------|-----|--------|
-| AusCycling | auscycling.org.au/events | HTML scraping (Cloudflare-protected) |
-| West Coast Masters CC | wcmasterscycling.asn.au | WordPress REST API / HTML |
-| EntryBoss | entryboss.cc/calendar/westcoastmasterscc | HTML scraping |
-| WestCycle | westcycle.org.au | HTML scraping |
-
-> **Note:** Most sources use Cloudflare or similar bot protection. For production use, consider using Playwright with stealth plugins for reliable scraping.
+| AusCycling | auscycling.org.au/events | Playwright headless browser |
+| West Coast Masters CC | wcmasterscycling.asn.au | Playwright + WordPress REST API |
+| EntryBoss | entryboss.cc/calendar/westcoastmasterscc | Playwright headless browser |
+| WestCycle | westcycle.org.au | Playwright headless browser |
