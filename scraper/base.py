@@ -2,8 +2,10 @@
 
 import json
 import logging
+import re
 import time
 from dataclasses import dataclass, asdict
+from datetime import datetime, timezone
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -202,6 +204,76 @@ class BaseScraper:
                     time.sleep(2 ** attempt)
 
         return None
+
+    def _normalise_date(self, date_str: str) -> str:
+        """Normalise a date string to ISO format (YYYY-MM-DD).
+
+        Handles common formats from EntryBoss, AusCycling and other sources:
+        - ISO 8601 with/without timezone
+        - Day-of-week prefixes (Sat 22 Feb 2025, Saturday, 22 February 2025)
+        - Ordinal suffixes (22nd Feb 2025, 1st March 2025)
+        - Australian date formats (22/02/2025)
+        - US date formats (Feb 22, 2025)
+        - Unix timestamps
+        """
+        if not date_str:
+            return ""
+
+        date_str = str(date_str).strip()
+
+        # Already ISO format (handles 2025-02-22T08:00:00.000+08:00 etc.)
+        if re.match(r"\d{4}-\d{2}-\d{2}", date_str):
+            return date_str[:10]
+
+        # Unix timestamp (integer or string of digits)
+        if re.match(r"^\d{9,13}$", date_str):
+            try:
+                ts = int(date_str)
+                if ts > 1e12:  # milliseconds
+                    ts = ts / 1000
+                dt = datetime.fromtimestamp(ts, tz=timezone.utc)
+                return dt.strftime("%Y-%m-%d")
+            except (ValueError, OSError):
+                pass
+
+        # Strip day-of-week prefixes (Mon, Monday, Tue, Tuesday, etc.)
+        date_str = re.sub(
+            r"^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)"
+            r"(?:day|nesday|rsday|urday)?"
+            r"[,\s]+",
+            "", date_str, flags=re.IGNORECASE,
+        )
+
+        # Strip ordinal suffixes (1st, 2nd, 3rd, 4th, 11th, 22nd, etc.)
+        date_str = re.sub(r"(\d)(st|nd|rd|th)\b", r"\1", date_str)
+
+        # Try common date formats
+        for fmt in [
+            "%d %B %Y", "%d %b %Y", "%d/%m/%Y", "%d-%m-%Y",
+            "%B %d, %Y", "%b %d, %Y", "%B %d %Y", "%b %d %Y",
+            "%d %B", "%d %b",
+            "%Y-%m-%dT%H:%M:%S",
+        ]:
+            try:
+                dt = datetime.strptime(date_str.strip(), fmt)
+                if "%Y" not in fmt:
+                    now = datetime.now()
+                    dt = dt.replace(year=now.year)
+                    if dt < now:
+                        dt = dt.replace(year=now.year + 1)
+                return dt.strftime("%Y-%m-%d")
+            except ValueError:
+                continue
+
+        # Last resort: try dateutil parser
+        try:
+            from dateutil import parser as dateutil_parser
+            dt = dateutil_parser.parse(date_str, dayfirst=True)
+            return dt.strftime("%Y-%m-%d")
+        except Exception:
+            pass
+
+        return date_str
 
     def _extract_via_js(self, url, js_extract_fn, wait_for=None, wait_ms=5000):
         """Navigate to a URL and run a JS function in the page context to extract data.

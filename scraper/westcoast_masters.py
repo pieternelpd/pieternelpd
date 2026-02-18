@@ -496,31 +496,3 @@ class WestCoastMastersScraper(BaseScraper):
         headers = ["event", "date", "venue", "location", "state", "discipline", "name"]
         return text.lower().strip() in headers
 
-    def _normalise_date(self, date_str: str) -> str:
-        """Try to normalise a date string to ISO format."""
-        if not date_str:
-            return ""
-
-        # Already ISO format
-        if re.match(r"\d{4}-\d{2}-\d{2}", date_str):
-            return date_str[:10]
-
-        # Try common date formats
-        for fmt in [
-            "%d %B %Y", "%d %b %Y", "%d/%m/%Y", "%d-%m-%Y",
-            "%B %d, %Y", "%b %d, %Y", "%d %B", "%d %b",
-            "%Y-%m-%dT%H:%M:%S",
-        ]:
-            try:
-                from datetime import datetime
-                dt = datetime.strptime(date_str.strip(), fmt)
-                if "%Y" not in fmt:
-                    now = datetime.now()
-                    dt = dt.replace(year=now.year)
-                    if dt < now:
-                        dt = dt.replace(year=now.year + 1)
-                return dt.strftime("%Y-%m-%d")
-            except ValueError:
-                continue
-
-        return date_str
