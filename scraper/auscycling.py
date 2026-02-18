@@ -5,7 +5,6 @@ We also try the AusCycling EntryBoss calendar as a more accessible source.
 """
 
 import logging
-import re
 from bs4 import BeautifulSoup
 from .base import BaseScraper, CyclingEvent
 
@@ -421,33 +420,6 @@ class AusCyclingScraper(BaseScraper):
             if el:
                 return el.get_text(strip=True)
         return ""
-
-    def _normalise_date(self, date_str: str) -> str:
-        """Try to normalise a date string to ISO format."""
-        if not date_str:
-            return ""
-
-        if re.match(r"\d{4}-\d{2}-\d{2}", date_str):
-            return date_str[:10]
-
-        for fmt in [
-            "%d %B %Y", "%d %b %Y", "%d/%m/%Y", "%d-%m-%Y",
-            "%B %d, %Y", "%b %d, %Y", "%d %B", "%d %b",
-            "%Y-%m-%dT%H:%M:%S",
-        ]:
-            try:
-                from datetime import datetime
-                dt = datetime.strptime(date_str.strip(), fmt)
-                if "%Y" not in fmt:
-                    now = datetime.now()
-                    dt = dt.replace(year=now.year)
-                    if dt < now:
-                        dt = dt.replace(year=now.year + 1)
-                return dt.strftime("%Y-%m-%d")
-            except ValueError:
-                continue
-
-        return date_str
 
     def _is_header_row(self, text: str) -> bool:
         """Check if a table row is a header rather than data."""
