@@ -95,6 +95,27 @@ class BaseScraper:
             logger.warning(f"[{self.SOURCE_NAME}] Request failed for {url}: {e}")
             return None
 
+    def _make_cf_request(self, url, **kwargs):
+        """Make an HTTP request using cloudscraper to bypass Cloudflare."""
+        try:
+            import cloudscraper
+        except ImportError:
+            logger.warning(f"[{self.SOURCE_NAME}] cloudscraper not installed, falling back to requests")
+            return self._make_request(url, **kwargs)
+
+        headers = kwargs.pop("headers", {})
+        headers.setdefault("Accept-Language", "en-US,en;q=0.9,en-AU;q=0.8")
+        try:
+            scraper = cloudscraper.create_scraper(
+                browser={"browser": "chrome", "platform": "windows", "desktop": True},
+            )
+            resp = scraper.get(url, headers=headers, timeout=30, **kwargs)
+            resp.raise_for_status()
+            return resp
+        except Exception as e:
+            logger.warning(f"[{self.SOURCE_NAME}] Cloudscraper request failed for {url}: {e}")
+            return None
+
     def _fetch_page(self, url, wait_for=None, wait_ms=3000, retries=2):
         """Fetch a page using Playwright headless browser with stealth.
 

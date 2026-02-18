@@ -26,17 +26,31 @@ def _launch_browser():
     try:
         from playwright.sync_api import sync_playwright
         pw = sync_playwright().start()
-        browser = pw.chromium.launch(
-            headless=True,
-            args=[
-                "--no-sandbox",
-                "--disable-setuid-sandbox",
-                "--disable-dev-shm-usage",
-                "--disable-blink-features=AutomationControlled",
-                "--disable-infobars",
-                "--window-size=1920,1080",
-            ],
-        )
+
+        launch_args = [
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-blink-features=AutomationControlled",
+            "--disable-infobars",
+            "--window-size=1920,1080",
+        ]
+
+        try:
+            browser = pw.chromium.launch(headless=True, args=launch_args)
+        except Exception as e:
+            # Try finding the browser executable manually
+            logger.warning(f"Default browser launch failed: {e}")
+            import pathlib
+            cache_dir = pathlib.Path.home() / ".cache" / "ms-playwright"
+            chrome_paths = list(cache_dir.rglob("chrome")) + list(cache_dir.rglob("chromium"))
+            if chrome_paths:
+                exe = str(chrome_paths[0])
+                logger.info(f"Trying browser at {exe}")
+                browser = pw.chromium.launch(headless=True, executable_path=exe, args=launch_args)
+            else:
+                raise
+
         context = browser.new_context(
             user_agent=(
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
