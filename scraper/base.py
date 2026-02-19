@@ -96,25 +96,43 @@ class BaseScraper:
             return None
 
     def _make_cf_request(self, url, **kwargs):
-        """Make an HTTP request using cloudscraper to bypass Cloudflare."""
+        """Make an HTTP request using curl_cffi to bypass Cloudflare.
+
+        curl_cffi impersonates real browser TLS fingerprints, which is the
+        primary way Cloudflare detects automated traffic.
+        """
         try:
-            import cloudscraper
+            from curl_cffi import requests as cf_requests
         except ImportError:
-            logger.warning(f"[{self.SOURCE_NAME}] cloudscraper not installed, falling back to requests")
+            logger.warning(f"[{self.SOURCE_NAME}] curl_cffi not installed, falling back to requests")
             return self._make_request(url, **kwargs)
 
         headers = kwargs.pop("headers", {})
+        headers.setdefault("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
         headers.setdefault("Accept-Language", "en-US,en;q=0.9,en-AU;q=0.8")
-        try:
-            scraper = cloudscraper.create_scraper(
-                browser={"browser": "chrome", "platform": "windows", "desktop": True},
-            )
-            resp = scraper.get(url, headers=headers, timeout=30, **kwargs)
-            resp.raise_for_status()
-            return resp
-        except Exception as e:
-            logger.warning(f"[{self.SOURCE_NAME}] Cloudscraper request failed for {url}: {e}")
-            return None
+
+        # Try multiple browser impersonation profiles
+        for browser_type in ["chrome", "safari", "chrome110"]:
+            try:
+                resp = cf_requests.get(
+                    url, headers=headers, timeout=30,
+                    impersonate=browser_type, **kwargs,
+                )
+                if resp.status_code == 200:
+                    logger.info(f"[{self.SOURCE_NAME}] curl_cffi ({browser_type}) OK for {url} - {len(resp.text)} bytes")
+                    return resp
+                elif resp.status_code == 403:
+                    logger.info(f"[{self.SOURCE_NAME}] curl_cffi ({browser_type}) got 403 for {url}, trying next")
+                    continue
+                else:
+                    resp.raise_for_status()
+                    return resp
+            except Exception as e:
+                logger.debug(f"[{self.SOURCE_NAME}] curl_cffi ({browser_type}) failed for {url}: {e}")
+                continue
+
+        logger.warning(f"[{self.SOURCE_NAME}] All curl_cffi attempts failed for {url}")
+        return None
 
     def _fetch_page(self, url, wait_for=None, wait_ms=3000, retries=2):
         """Fetch a page using Playwright headless browser with stealth.
