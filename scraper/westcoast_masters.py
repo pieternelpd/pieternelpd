@@ -141,7 +141,7 @@ class WestCoastMastersScraper(BaseScraper):
         self._scrape_entryboss_cf()
 
         if self.events:
-            logger.info(f"[{self.SOURCE_NAME}] Got {len(self.events)} events from EntryBoss cloudscraper")
+            logger.info(f"[{self.SOURCE_NAME}] Got {len(self.events)} events from EntryBoss curl_cffi")
             return self.events
 
         # Strategy 3: Try EntryBoss with JS extraction (Playwright)

@@ -38,7 +38,6 @@ class BaseScraper:
     SOURCE_NAME = "unknown"
 
     def __init__(self, browser=None):
-        self.session = None
         self.events: list[CyclingEvent] = []
         self._browser = browser
 
@@ -263,9 +262,12 @@ class BaseScraper:
             try:
                 dt = datetime.strptime(date_str.strip(), fmt)
                 if "%Y" not in fmt:
+                    from datetime import timedelta
                     now = datetime.now()
                     dt = dt.replace(year=now.year)
-                    if dt < now:
+                    # Only push to next year if the date is more than 30 days
+                    # in the past (avoids bumping recent events to next year)
+                    if dt < now - timedelta(days=30):
                         dt = dt.replace(year=now.year + 1)
                 return dt.strftime("%Y-%m-%d")
             except ValueError:
