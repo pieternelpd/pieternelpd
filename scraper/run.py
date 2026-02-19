@@ -48,8 +48,7 @@ def _launch_browser():
         except Exception as e:
             # Try finding the browser executable manually
             logger.warning(f"Default browser launch failed: {e}")
-            import pathlib
-            cache_dir = pathlib.Path.home() / ".cache" / "ms-playwright"
+            cache_dir = Path.home() / ".cache" / "ms-playwright"
             chrome_paths = list(cache_dir.rglob("chrome")) + list(cache_dir.rglob("chromium"))
             if chrome_paths:
                 exe = str(chrome_paths[0])

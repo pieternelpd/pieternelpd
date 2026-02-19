@@ -38,13 +38,33 @@ class BaseScraper:
     SOURCE_NAME = "unknown"
 
     def __init__(self, browser=None):
-        self.session = None
         self.events: list[CyclingEvent] = []
         self._browser = browser
 
     def scrape(self) -> list[CyclingEvent]:
         """Scrape events from the source. Override in subclass."""
         raise NotImplementedError
+
+    def _make_event(self, name, date="", url=None, venue="TBA",
+                    discipline=None, state=None, **kwargs) -> CyclingEvent:
+        """Create a CyclingEvent with sensible defaults.
+
+        Subclasses can override to set organiser, source, and other defaults.
+        """
+        return CyclingEvent(
+            name=name[:200],
+            date=self._normalise_date(date),
+            end_date=kwargs.get("end_date"),
+            venue=venue,
+            address=kwargs.get("address", venue),
+            lat=kwargs.get("lat"),
+            lng=kwargs.get("lng"),
+            discipline=discipline or "road",
+            organiser=kwargs.get("organiser", "Unknown"),
+            source=self.SOURCE_NAME,
+            url=url,
+            state=state,
+        )
 
     def _make_request(self, url, **kwargs):
         """Make an HTTP request with error handling."""
@@ -263,9 +283,12 @@ class BaseScraper:
             try:
                 dt = datetime.strptime(date_str.strip(), fmt)
                 if "%Y" not in fmt:
+                    from datetime import timedelta
                     now = datetime.now()
                     dt = dt.replace(year=now.year)
-                    if dt < now:
+                    # Only push to next year if the date is more than 30 days
+                    # in the past (avoids bumping recent events to next year)
+                    if dt < now - timedelta(days=30):
                         dt = dt.replace(year=now.year + 1)
                 return dt.strftime("%Y-%m-%d")
             except ValueError:

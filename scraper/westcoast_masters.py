@@ -127,6 +127,21 @@ class WestCoastMastersScraper(BaseScraper):
 
     SOURCE_NAME = "wcmcc"
 
+    def _make_event(self, name, date="", url=None, venue=None,
+                    discipline=None, state=None, **kwargs):
+        venue_info = self._match_venue(name + " " + (venue or ""))
+        return super()._make_event(
+            name, date=date,
+            url=url or ENTRYBOSS_URL,
+            venue=venue or venue_info.get("address", "WA") if venue_info else (venue or "WA"),
+            address=venue_info.get("address", "WA") if venue_info else "WA",
+            lat=venue_info.get("lat") if venue_info else None,
+            lng=venue_info.get("lng") if venue_info else None,
+            discipline=discipline or self._guess_discipline(name),
+            state="WA",
+            organiser="West Coast Masters CC",
+        )
+
     def scrape(self) -> list[CyclingEvent]:
         self.events = []
 
@@ -137,11 +152,11 @@ class WestCoastMastersScraper(BaseScraper):
             logger.info(f"[{self.SOURCE_NAME}] Got {len(self.events)} events from EntryBoss JSON")
             return self.events
 
-        # Strategy 2: Try EntryBoss HTML via cloudscraper (bypasses Cloudflare)
+        # Strategy 2: Try EntryBoss HTML via curl_cffi (bypasses Cloudflare)
         self._scrape_entryboss_cf()
 
         if self.events:
-            logger.info(f"[{self.SOURCE_NAME}] Got {len(self.events)} events from EntryBoss cloudscraper")
+            logger.info(f"[{self.SOURCE_NAME}] Got {len(self.events)} events from EntryBoss curl_cffi")
             return self.events
 
         # Strategy 3: Try EntryBoss with JS extraction (Playwright)
@@ -176,7 +191,7 @@ class WestCoastMastersScraper(BaseScraper):
         """Try Rails .json endpoint on EntryBoss (common Rails convention)."""
         data = None
 
-        # Try cloudscraper first (bypasses Cloudflare JS challenges)
+        # Try curl_cffi first (bypasses Cloudflare JS challenges)
         resp = self._make_cf_request(ENTRYBOSS_JSON_URL, headers={
             "Accept": "application/json",
         })
@@ -184,7 +199,7 @@ class WestCoastMastersScraper(BaseScraper):
             try:
                 data = resp.json()
             except Exception:
-                logger.debug(f"[{self.SOURCE_NAME}] Cloudscraper .json response was not JSON")
+                logger.debug(f"[{self.SOURCE_NAME}] curl_cffi .json response was not JSON")
 
         # Try Playwright browser
         if not data:
@@ -223,20 +238,9 @@ class WestCoastMastersScraper(BaseScraper):
                 url = item.get("url", item.get("link", ""))
 
                 if name and len(name) > 3:
-                    venue_info = self._match_venue(name)
-                    self.events.append(CyclingEvent(
-                        name=name[:200],
-                        date=self._normalise_date(str(date_str)),
-                        end_date=None,
-                        venue=venue_info.get("address", "WA") if venue_info else "WA",
-                        address=venue_info.get("address", "WA") if venue_info else "WA",
-                        lat=venue_info.get("lat") if venue_info else None,
-                        lng=venue_info.get("lng") if venue_info else None,
-                        discipline=self._guess_discipline(name),
-                        organiser="West Coast Masters CC",
-                        source=self.SOURCE_NAME,
+                    self.events.append(self._make_event(
+                        name, date=str(date_str),
                         url=url if url else ENTRYBOSS_URL,
-                        state="WA",
                     ))
             except Exception as e:
                 logger.debug(f"Failed to parse EntryBoss JSON item: {e}")
@@ -283,20 +287,8 @@ class WestCoastMastersScraper(BaseScraper):
                 # Look for date in parent element
                 date_str = self._extract_date_near(link)
 
-                venue_info = self._match_venue(name)
-                self.events.append(CyclingEvent(
-                    name=name[:200],
-                    date=self._normalise_date(date_str),
-                    end_date=None,
-                    venue=venue_info.get("address", "WA") if venue_info else "WA",
-                    address=venue_info.get("address", "WA") if venue_info else "WA",
-                    lat=venue_info.get("lat") if venue_info else None,
-                    lng=venue_info.get("lng") if venue_info else None,
-                    discipline=self._guess_discipline(name),
-                    organiser="West Coast Masters CC",
-                    source=self.SOURCE_NAME,
-                    url=url if url else ENTRYBOSS_URL,
-                    state="WA",
+                self.events.append(self._make_event(
+                    name, date=date_str, url=url,
                 ))
             except Exception as e:
                 logger.debug(f"Failed to parse EntryBoss CF link: {e}")
@@ -317,20 +309,8 @@ class WestCoastMastersScraper(BaseScraper):
                         url = "https://entryboss.cc" + url
 
                     if name and len(name) > 3 and not self._is_header(name):
-                        venue_info = self._match_venue(name)
-                        self.events.append(CyclingEvent(
-                            name=name[:200],
-                            date=self._normalise_date(date_str),
-                            end_date=None,
-                            venue=venue_info.get("address", "WA") if venue_info else "WA",
-                            address=venue_info.get("address", "WA") if venue_info else "WA",
-                            lat=venue_info.get("lat") if venue_info else None,
-                            lng=venue_info.get("lng") if venue_info else None,
-                            discipline=self._guess_discipline(name),
-                            organiser="West Coast Masters CC",
-                            source=self.SOURCE_NAME,
-                            url=url if url else ENTRYBOSS_URL,
-                            state="WA",
+                        self.events.append(self._make_event(
+                            name, date=date_str, url=url,
                         ))
             except Exception as e:
                 logger.debug(f"Failed to parse EntryBoss CF table row: {e}")
@@ -380,20 +360,9 @@ class WestCoastMastersScraper(BaseScraper):
             try:
                 name = item.get("name", "")
                 if name and len(name) > 3:
-                    venue_info = self._match_venue(name)
-                    self.events.append(CyclingEvent(
-                        name=name[:200],
-                        date=self._normalise_date(item.get("date", "")),
-                        end_date=None,
-                        venue=venue_info.get("address", "WA") if venue_info else "WA",
-                        address=venue_info.get("address", "WA") if venue_info else "WA",
-                        lat=venue_info.get("lat") if venue_info else None,
-                        lng=venue_info.get("lng") if venue_info else None,
-                        discipline=self._guess_discipline(name),
-                        organiser="West Coast Masters CC",
-                        source=self.SOURCE_NAME,
+                    self.events.append(self._make_event(
+                        name, date=item.get("date", ""),
                         url=item.get("url", ENTRYBOSS_URL),
-                        state="WA",
                     ))
             except Exception as e:
                 logger.debug(f"Failed to parse EntryBoss JS item: {e}")
@@ -445,20 +414,8 @@ class WestCoastMastersScraper(BaseScraper):
                         if date_match:
                             date_str = date_match.group(1)
 
-                venue_info = self._match_venue(name)
-                self.events.append(CyclingEvent(
-                    name=name[:200],
-                    date=self._normalise_date(date_str),
-                    end_date=None,
-                    venue=venue_info.get("address", "WA") if venue_info else "WA",
-                    address=venue_info.get("address", "WA") if venue_info else "WA",
-                    lat=venue_info.get("lat") if venue_info else None,
-                    lng=venue_info.get("lng") if venue_info else None,
-                    discipline=self._guess_discipline(name),
-                    organiser="West Coast Masters CC",
-                    source=self.SOURCE_NAME,
-                    url=url,
-                    state="WA",
+                self.events.append(self._make_event(
+                    name, date=date_str, url=url,
                 ))
             except Exception as e:
                 logger.debug(f"Failed to parse EntryBoss link: {e}")
@@ -479,20 +436,8 @@ class WestCoastMastersScraper(BaseScraper):
                         url = "https://entryboss.cc" + url
 
                     if name and len(name) > 3 and not self._is_header(name):
-                        venue_info = self._match_venue(name)
-                        self.events.append(CyclingEvent(
-                            name=name[:200],
-                            date=self._normalise_date(date_str),
-                            end_date=None,
-                            venue=venue_info.get("address", "WA") if venue_info else "WA",
-                            address=venue_info.get("address", "WA") if venue_info else "WA",
-                            lat=venue_info.get("lat") if venue_info else None,
-                            lng=venue_info.get("lng") if venue_info else None,
-                            discipline=self._guess_discipline(name),
-                            organiser="West Coast Masters CC",
-                            source=self.SOURCE_NAME,
-                            url=url,
-                            state="WA",
+                        self.events.append(self._make_event(
+                            name, date=date_str, url=url,
                         ))
             except Exception as e:
                 logger.debug(f"Failed to parse table row: {e}")
@@ -540,20 +485,8 @@ class WestCoastMastersScraper(BaseScraper):
                         venue = cells[2].get_text(strip=True) if len(cells) > 2 else ""
 
                 if name and not self._is_header(name):
-                    venue_info = self._match_venue(name + " " + venue)
-                    self.events.append(CyclingEvent(
-                        name=name,
-                        date=self._normalise_date(date_str),
-                        end_date=None,
-                        venue=venue or (venue_info.get("address", "WA") if venue_info else "WA"),
-                        address=venue_info.get("address", "WA") if venue_info else "WA",
-                        lat=venue_info.get("lat") if venue_info else None,
-                        lng=venue_info.get("lng") if venue_info else None,
-                        discipline=self._guess_discipline(name),
-                        organiser="West Coast Masters CC",
-                        source=self.SOURCE_NAME,
-                        url=source_url,
-                        state="WA",
+                    self.events.append(self._make_event(
+                        name, date=date_str, url=source_url, venue=venue,
                     ))
             except Exception as e:
                 logger.debug(f"Failed to parse calendar item: {e}")
@@ -584,20 +517,8 @@ class WestCoastMastersScraper(BaseScraper):
                 url = link["href"] if link else None
 
                 if name and ("wcm" in name.lower() or "west coast" in name.lower()):
-                    venue_info = self._match_venue(name + " " + venue)
-                    self.events.append(CyclingEvent(
-                        name=name,
-                        date=self._normalise_date(date_str),
-                        end_date=None,
-                        venue=venue or (venue_info.get("address", "WA") if venue_info else "WA"),
-                        address=venue_info.get("address", "WA") if venue_info else "WA",
-                        lat=venue_info.get("lat") if venue_info else None,
-                        lng=venue_info.get("lng") if venue_info else None,
-                        discipline=self._guess_discipline(name),
-                        organiser="West Coast Masters CC",
-                        source=self.SOURCE_NAME,
-                        url=url,
-                        state="WA",
+                    self.events.append(self._make_event(
+                        name, date=date_str, url=url, venue=venue,
                     ))
             except Exception as e:
                 logger.debug(f"Failed to parse WestCycle item: {e}")
