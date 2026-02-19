@@ -145,47 +145,51 @@ class WestCoastMastersScraper(BaseScraper):
     def scrape(self) -> list[CyclingEvent]:
         self.events = []
 
-        # Strategy 1: Try EntryBoss Rails .json endpoint
+        # Try all sources and merge (don't short-circuit).
+        # EntryBoss and the WCMCC website list different subsets of events.
+
+        # Source 1: EntryBoss Rails .json endpoint
         self._try_entryboss_json()
+        logger.info(f"[{self.SOURCE_NAME}] After EntryBoss JSON: {len(self.events)} events")
 
-        if self.events:
-            logger.info(f"[{self.SOURCE_NAME}] Got {len(self.events)} events from EntryBoss JSON")
-            return self.events
-
-        # Strategy 2: Try EntryBoss HTML via curl_cffi (bypasses Cloudflare)
+        # Source 2: EntryBoss HTML via curl_cffi (bypasses Cloudflare)
         self._scrape_entryboss_cf()
+        logger.info(f"[{self.SOURCE_NAME}] After EntryBoss curl_cffi: {len(self.events)} events")
 
-        if self.events:
-            logger.info(f"[{self.SOURCE_NAME}] Got {len(self.events)} events from EntryBoss curl_cffi")
-            return self.events
-
-        # Strategy 3: Try EntryBoss with JS extraction (Playwright)
+        # Source 3: EntryBoss with JS extraction (Playwright)
         self._scrape_entryboss_js()
+        logger.info(f"[{self.SOURCE_NAME}] After EntryBoss JS: {len(self.events)} events")
 
-        if self.events:
-            logger.info(f"[{self.SOURCE_NAME}] Got {len(self.events)} events from EntryBoss JS")
-            return self.events
-
-        # Strategy 4: Try EntryBoss with HTML parsing
+        # Source 4: EntryBoss with HTML parsing
         self._scrape_entryboss_html()
 
-        if self.events:
-            logger.info(f"[{self.SOURCE_NAME}] Got {len(self.events)} events from EntryBoss HTML")
-            return self.events
-
-        # Strategy 5: Try WCMCC calendar pages
+        # Source 5: WCMCC calendar pages
         for url in CALENDAR_URLS:
             html = self._fetch_page(url, wait_for="table, .tribe-events, article", wait_ms=3000)
             if html:
                 self._parse_calendar(html, url)
 
-        # Strategy 6: Try WestCycle
+        # Source 6: WestCycle
         html = self._fetch_page(WESTCYCLE_URL, wait_for=".event, article", wait_ms=3000)
         if html:
             self._parse_westcycle(html)
 
+        # Deduplicate within this scraper
+        self.events = self._deduplicate(self.events)
+
         logger.info(f"[{self.SOURCE_NAME}] Scraped {len(self.events)} events total")
         return self.events
+
+    def _deduplicate(self, events: list[CyclingEvent]) -> list[CyclingEvent]:
+        """Remove duplicate events by normalised name + date."""
+        seen = set()
+        unique = []
+        for event in events:
+            key = (event.name.lower().strip(), event.date)
+            if key not in seen:
+                seen.add(key)
+                unique.append(event)
+        return unique
 
     def _try_entryboss_json(self):
         """Try Rails .json endpoint on EntryBoss (common Rails convention)."""
@@ -274,6 +278,7 @@ class WestCoastMastersScraper(BaseScraper):
             body_text = soup.get_text()[:500]
             logger.info(f"[{self.SOURCE_NAME}] Page text preview: {body_text[:300]}")
 
+        found_links = 0
         for link in race_links:
             try:
                 name = link.get_text(strip=True)
@@ -290,10 +295,11 @@ class WestCoastMastersScraper(BaseScraper):
                 self.events.append(self._make_event(
                     name, date=date_str, url=url,
                 ))
+                found_links += 1
             except Exception as e:
                 logger.debug(f"Failed to parse EntryBoss CF link: {e}")
 
-        if self.events:
+        if found_links:
             return
 
         # Fallback: try table rows
@@ -388,6 +394,7 @@ class WestCoastMastersScraper(BaseScraper):
         if race_links:
             logger.info(f"[{self.SOURCE_NAME}] Found {len(race_links)} race links")
 
+        found_links = 0
         for link in race_links:
             try:
                 name = link.get_text(strip=True)
@@ -417,10 +424,11 @@ class WestCoastMastersScraper(BaseScraper):
                 self.events.append(self._make_event(
                     name, date=date_str, url=url,
                 ))
+                found_links += 1
             except Exception as e:
                 logger.debug(f"Failed to parse EntryBoss link: {e}")
 
-        if self.events:
+        if found_links:
             return
 
         # Fallback: try table rows
