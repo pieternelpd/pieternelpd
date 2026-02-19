@@ -32,8 +32,7 @@ def _launch_browser():
         from playwright.sync_api import sync_playwright
         from playwright_stealth import Stealth
 
-        stealth = Stealth()
-        pw = stealth.use_sync(sync_playwright()).start()
+        pw = sync_playwright().start()
 
         launch_args = [
             "--no-sandbox",
@@ -70,6 +69,12 @@ def _launch_browser():
             timezone_id="Australia/Perth",
             color_scheme="light",
         )
+
+        # Apply stealth evasions to the browser context so every page
+        # created from it gets anti-detection scripts injected.
+        stealth = Stealth()
+        stealth.apply_stealth_sync(context)
+
         logger.info("Playwright browser launched with stealth mode")
         return pw, browser, context
     except ImportError as e:
