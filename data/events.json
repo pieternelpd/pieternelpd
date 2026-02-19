@@ -20625,6 +20625,21 @@
     "description": null
   },
   {
+    "name": "Closing soon",
+    "date": "",
+    "end_date": null,
+    "venue": "TBA",
+    "address": "TBA",
+    "lat": null,
+    "lng": null,
+    "discipline": "road",
+    "organiser": "AusCycling",
+    "source": "auscycling",
+    "url": "https://entryboss.cc/races/29566",
+    "state": null,
+    "description": null
+  },
+  {
     "name": "Friday Night Beginner Come & Try / Open Track",
     "date": "",
     "end_date": null,
@@ -25722,21 +25737,6 @@
     "source": "wcmcc",
     "url": "https://entryboss.cc/races/29459",
     "state": "WA",
-    "description": null
-  },
-  {
-    "name": "Closing soon",
-    "date": "",
-    "end_date": null,
-    "venue": "TBA",
-    "address": "TBA",
-    "lat": null,
-    "lng": null,
-    "discipline": "road",
-    "organiser": "AusCycling",
-    "source": "auscycling",
-    "url": "https://entryboss.cc/races/28557",
-    "state": null,
     "description": null
   },
   {
