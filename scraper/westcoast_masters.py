@@ -242,19 +242,33 @@ class WestCoastMastersScraper(BaseScraper):
                 logger.debug(f"Failed to parse EntryBoss JSON item: {e}")
 
     def _scrape_entryboss_cf(self):
-        """Scrape EntryBoss calendar HTML using cloudscraper to bypass Cloudflare."""
+        """Scrape EntryBoss calendar HTML using curl_cffi to bypass Cloudflare."""
         resp = self._make_cf_request(ENTRYBOSS_URL)
         if not resp:
             return
 
         html = resp.text
-        logger.info(f"[{self.SOURCE_NAME}] EntryBoss CF page: {len(html)} bytes")
-
         soup = BeautifulSoup(html, "lxml")
+        title = soup.title.string if soup.title else "N/A"
+        logger.info(f"[{self.SOURCE_NAME}] EntryBoss CF: title='{title}', {len(html)} bytes")
+
+        # If we got a Cloudflare challenge page, skip
+        if "just a moment" in title.lower() or "challenge" in title.lower():
+            logger.warning(f"[{self.SOURCE_NAME}] Got Cloudflare challenge page")
+            return
 
         # Look for race links
         race_links = soup.select("a[href*='/races/']")
         logger.info(f"[{self.SOURCE_NAME}] EntryBoss CF: {len(race_links)} race links found")
+
+        if not race_links:
+            all_links = soup.select("a[href]")
+            logger.info(f"[{self.SOURCE_NAME}] Total links on page: {len(all_links)}")
+            if all_links:
+                sample_hrefs = [a.get("href", "")[:80] for a in all_links[:10]]
+                logger.info(f"[{self.SOURCE_NAME}] Sample links: {sample_hrefs}")
+            body_text = soup.get_text()[:500]
+            logger.info(f"[{self.SOURCE_NAME}] Page text preview: {body_text[:300]}")
 
         for link in race_links:
             try:
@@ -267,20 +281,7 @@ class WestCoastMastersScraper(BaseScraper):
                     url = "https://entryboss.cc" + url
 
                 # Look for date in parent element
-                date_str = ""
-                parent = link.find_parent(["tr", "div", "li", "article", "section"])
-                if parent:
-                    time_el = parent.find("time")
-                    if time_el:
-                        date_str = time_el.get("datetime", time_el.get_text(strip=True))
-                    else:
-                        parent_text = parent.get_text()
-                        date_match = re.search(
-                            r'(\d{1,2}[\s/\-](?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*[\s/\-]\d{2,4})',
-                            parent_text, re.IGNORECASE
-                        ) or re.search(r'(\d{4}-\d{2}-\d{2})', parent_text)
-                        if date_match:
-                            date_str = date_match.group(1)
+                date_str = self._extract_date_near(link)
 
                 venue_info = self._match_venue(name)
                 self.events.append(CyclingEvent(
@@ -334,13 +335,30 @@ class WestCoastMastersScraper(BaseScraper):
             except Exception as e:
                 logger.debug(f"Failed to parse EntryBoss CF table row: {e}")
 
+    def _extract_date_near(self, element):
+        """Extract a date string from near a BeautifulSoup element."""
+        parent = element.find_parent(["tr", "div", "li", "article", "section"])
+        if not parent:
+            return ""
+        time_el = parent.find("time")
+        if time_el:
+            return time_el.get("datetime", time_el.get_text(strip=True))
+        parent_text = parent.get_text()
+        date_match = (
+            re.search(r'(\d{1,2}[\s/\-](?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*[\s/\-]\d{2,4})', parent_text, re.IGNORECASE)
+            or re.search(r'((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+\d{1,2},?\s+\d{4})', parent_text, re.IGNORECASE)
+            or re.search(r'(\d{4}-\d{2}-\d{2})', parent_text)
+            or re.search(r'(\d{1,2}/\d{1,2}/\d{2,4})', parent_text)
+        )
+        return date_match.group(1) if date_match else ""
+
     def _scrape_entryboss_js(self):
         """Use Playwright JS extraction to get events from EntryBoss page."""
         result = self._extract_via_js(
             ENTRYBOSS_URL,
             ENTRYBOSS_EXTRACT_JS,
             wait_for="a[href*='/races/'], table, .card",
-            wait_ms=5000,
+            wait_ms=8000,
         )
 
         if not result:
@@ -385,7 +403,7 @@ class WestCoastMastersScraper(BaseScraper):
         html = self._fetch_page(
             ENTRYBOSS_URL,
             wait_for="a[href*='/races/'], table, .card",
-            wait_ms=5000,
+            wait_ms=8000,
         )
         if not html:
             return

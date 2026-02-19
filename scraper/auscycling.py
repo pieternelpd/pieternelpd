@@ -22,9 +22,18 @@ DISCIPLINE_URLS = {
 
 EVENTS_URL = "https://auscycling.org.au/events"
 
-# AusCycling EntryBoss calendar (often more accessible than the main site)
+# AusCycling EntryBoss calendars (often more accessible than the main site)
 ENTRYBOSS_AC_URL = "https://entryboss.cc/calendar/ac"
 ENTRYBOSS_AC_JSON_URL = "https://entryboss.cc/calendar/ac.json"
+
+# State-specific EntryBoss calendars
+ENTRYBOSS_STATE_URLS = {
+    "WA": "https://entryboss.cc/calendar/acw",
+    "QLD": "https://entryboss.cc/calendar/acq",
+    "NSW": "https://entryboss.cc/calendar/acnsw",
+    "VIC": "https://entryboss.cc/calendar/acv",
+    "SA": "https://entryboss.cc/calendar/acsa",
+}
 
 # JS to extract events from AusCycling pages
 AUSCYCLING_EXTRACT_JS = """
@@ -212,19 +221,43 @@ class AusCyclingScraper(BaseScraper):
                 logger.debug(f"Failed to parse EntryBoss JSON item: {e}")
 
     def _scrape_entryboss_cf(self):
-        """Scrape EntryBoss calendar HTML using cloudscraper to bypass Cloudflare."""
-        resp = self._make_cf_request(ENTRYBOSS_AC_URL)
-        if not resp:
-            return
+        """Scrape EntryBoss calendar HTML using curl_cffi to bypass Cloudflare."""
+        # Try national calendar plus state-specific calendars
+        urls_to_try = [ENTRYBOSS_AC_URL] + list(ENTRYBOSS_STATE_URLS.values())
 
-        html = resp.text
-        logger.info(f"[{self.SOURCE_NAME}] EntryBoss CF page: {len(html)} bytes")
+        for cal_url in urls_to_try:
+            resp = self._make_cf_request(cal_url)
+            if not resp:
+                continue
 
-        soup = BeautifulSoup(html, "lxml")
+            html = resp.text
 
+            soup = BeautifulSoup(html, "lxml")
+            title = soup.title.string if soup.title else "N/A"
+            logger.info(f"[{self.SOURCE_NAME}] EntryBoss CF {cal_url}: title='{title}', {len(html)} bytes")
+
+            # If we got a Cloudflare challenge page, skip
+            if "just a moment" in title.lower() or "challenge" in title.lower():
+                logger.warning(f"[{self.SOURCE_NAME}] Got Cloudflare challenge page for {cal_url}")
+                continue
+
+            self._parse_entryboss_html_content(soup, cal_url)
+
+    def _parse_entryboss_html_content(self, soup, source_url):
+        """Parse EntryBoss HTML content from BeautifulSoup tree."""
         # Look for race links
         race_links = soup.select("a[href*='/races/']")
-        logger.info(f"[{self.SOURCE_NAME}] EntryBoss CF: {len(race_links)} race links found")
+        logger.info(f"[{self.SOURCE_NAME}] EntryBoss: {len(race_links)} race links in {source_url}")
+
+        if not race_links:
+            # Log page structure for debugging
+            all_links = soup.select("a[href]")
+            logger.info(f"[{self.SOURCE_NAME}] Total links on page: {len(all_links)}")
+            if all_links:
+                sample_hrefs = [a.get("href", "")[:80] for a in all_links[:10]]
+                logger.info(f"[{self.SOURCE_NAME}] Sample links: {sample_hrefs}")
+            body_text = soup.get_text()[:500]
+            logger.info(f"[{self.SOURCE_NAME}] Page text preview: {body_text[:300]}")
 
         for link in race_links:
             try:
@@ -237,20 +270,7 @@ class AusCyclingScraper(BaseScraper):
                     url = "https://entryboss.cc" + url
 
                 # Look for date in parent element
-                date_str = ""
-                parent = link.find_parent(["tr", "div", "li", "article", "section"])
-                if parent:
-                    time_el = parent.find("time")
-                    if time_el:
-                        date_str = time_el.get("datetime", time_el.get_text(strip=True))
-                    else:
-                        parent_text = parent.get_text()
-                        date_match = re.search(
-                            r'(\d{1,2}[\s/\-](?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*[\s/\-]\d{2,4})',
-                            parent_text, re.IGNORECASE
-                        ) or re.search(r'(\d{4}-\d{2}-\d{2})', parent_text)
-                        if date_match:
-                            date_str = date_match.group(1)
+                date_str = self._extract_date_near_element(link)
 
                 discipline = self._guess_discipline(name, name)
                 state = self._guess_state(url, name, name)
@@ -265,7 +285,7 @@ class AusCyclingScraper(BaseScraper):
                     discipline=discipline,
                     organiser="AusCycling",
                     source=self.SOURCE_NAME,
-                    url=url if url else ENTRYBOSS_AC_URL,
+                    url=url if url else source_url,
                     state=state,
                 ))
             except Exception as e:
@@ -286,7 +306,7 @@ class AusCyclingScraper(BaseScraper):
                     if url and not url.startswith("http"):
                         url = "https://entryboss.cc" + url
 
-                    if name and len(name) > 3:
+                    if name and len(name) > 3 and not self._is_header_row(name):
                         discipline = self._guess_discipline(name, name)
                         state = self._guess_state(url, name, name)
                         self.events.append(CyclingEvent(
@@ -300,11 +320,33 @@ class AusCyclingScraper(BaseScraper):
                             discipline=discipline,
                             organiser="AusCycling",
                             source=self.SOURCE_NAME,
-                            url=url if url else ENTRYBOSS_AC_URL,
+                            url=url if url else source_url,
                             state=state,
                         ))
             except Exception as e:
                 logger.debug(f"Failed to parse EntryBoss CF table row: {e}")
+
+    def _extract_date_near_element(self, element):
+        """Extract a date string from near a BeautifulSoup element."""
+        parent = element.find_parent(["tr", "div", "li", "article", "section"])
+        if not parent:
+            return ""
+
+        time_el = parent.find("time")
+        if time_el:
+            return time_el.get("datetime", time_el.get_text(strip=True))
+
+        parent_text = parent.get_text()
+        # Try: "Sat, 22 Feb 2025" or "22 Feb 2025" or "22/02/2025"
+        date_match = (
+            re.search(r'(\d{1,2}[\s/\-](?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*[\s/\-]\d{2,4})', parent_text, re.IGNORECASE)
+            or re.search(r'((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+\d{1,2},?\s+\d{4})', parent_text, re.IGNORECASE)
+            or re.search(r'(\d{4}-\d{2}-\d{2})', parent_text)
+            or re.search(r'(\d{1,2}/\d{1,2}/\d{2,4})', parent_text)
+        )
+        if date_match:
+            return date_match.group(1)
+        return ""
 
     def _scrape_entryboss_js(self):
         """Use Playwright JS extraction on AusCycling EntryBoss page."""
@@ -359,7 +401,7 @@ class AusCyclingScraper(BaseScraper):
             ENTRYBOSS_AC_URL,
             extract_js,
             wait_for="a[href*='/races/'], table",
-            wait_ms=5000,
+            wait_ms=8000,
         )
         if result:
             self._process_js_result(result)
