@@ -45,6 +45,27 @@ class BaseScraper:
         """Scrape events from the source. Override in subclass."""
         raise NotImplementedError
 
+    def _make_event(self, name, date="", url=None, venue="TBA",
+                    discipline=None, state=None, **kwargs) -> CyclingEvent:
+        """Create a CyclingEvent with sensible defaults.
+
+        Subclasses can override to set organiser, source, and other defaults.
+        """
+        return CyclingEvent(
+            name=name[:200],
+            date=self._normalise_date(date),
+            end_date=kwargs.get("end_date"),
+            venue=venue,
+            address=kwargs.get("address", venue),
+            lat=kwargs.get("lat"),
+            lng=kwargs.get("lng"),
+            discipline=discipline or "road",
+            organiser=kwargs.get("organiser", "Unknown"),
+            source=self.SOURCE_NAME,
+            url=url,
+            state=state,
+        )
+
     def _make_request(self, url, **kwargs):
         """Make an HTTP request with error handling."""
         import requests

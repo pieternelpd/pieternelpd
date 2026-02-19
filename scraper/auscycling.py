@@ -6,19 +6,42 @@ We also try the AusCycling EntryBoss calendar as a more accessible source.
 
 import logging
 import re
+from datetime import date
 from bs4 import BeautifulSoup
 from .base import BaseScraper, CyclingEvent
 
 logger = logging.getLogger(__name__)
 
+
+def _season_years() -> tuple[int, int]:
+    """Return (start_year, end_year) for the current Australian cycling season.
+
+    The season runs roughly July to June, so from July onward we use
+    the current year as the start; before July we use the previous year.
+    """
+    today = date.today()
+    if today.month >= 7:
+        return today.year, today.year + 1
+    return today.year - 1, today.year
+
+
+def _build_discipline_urls() -> dict[str, str]:
+    """Build AusCycling discipline calendar URLs for the current season."""
+    start, end = _season_years()
+    short_start = start % 100
+    short_end = end % 100
+    base = f"https://auscycling.org.au/event-hub/event-calendar-{start}-{end}"
+    return {
+        "road": f"{base}/road-events-calendar-{short_start}-{short_end}",
+        "track": f"{base}/track-events-calendar",
+        "mtb": f"{base}/mountain-bike-events-calendar-{short_start}-{short_end}",
+        "gravel": f"{base}/gravel-events-calendar-{short_start}-{short_end}",
+        "bmx": f"{base}/bmx-racing-events-calendar-{short_start}-{short_end}",
+    }
+
+
 # AusCycling event listing pages by discipline
-DISCIPLINE_URLS = {
-    "road": "https://auscycling.org.au/event-hub/event-calendar-2025-2026/road-events-calendar-25-26",
-    "track": "https://auscycling.org.au/event-hub/event-calendar-2025-2026/track-events-calendar",
-    "mtb": "https://auscycling.org.au/event-hub/event-calendar-2025-2026/mountain-bike-events-calendar-25-26",
-    "gravel": "https://auscycling.org.au/event-hub/event-calendar-2025-2026/gravel-events-calendar-25-26",
-    "bmx": "https://auscycling.org.au/event-hub/event-calendar-2025-2026/bmx-racing-events-calendar-25-26",
-}
+DISCIPLINE_URLS = _build_discipline_urls()
 
 EVENTS_URL = "https://auscycling.org.au/events"
 
@@ -100,6 +123,15 @@ class AusCyclingScraper(BaseScraper):
 
     SOURCE_NAME = "auscycling"
 
+    def _make_event(self, name, date="", url=None, venue="TBA",
+                    discipline=None, state=None, **kwargs):
+        disc = discipline or self._guess_discipline(name, kwargs.get("text", name))
+        st = state or self._guess_state(url, venue, name)
+        return super()._make_event(
+            name, date=date, url=url, venue=venue,
+            discipline=disc, state=st, organiser="AusCycling", **kwargs,
+        )
+
     def scrape(self) -> list[CyclingEvent]:
         self.events = []
 
@@ -110,7 +142,7 @@ class AusCyclingScraper(BaseScraper):
             logger.info(f"[{self.SOURCE_NAME}] Got {len(self.events)} events from EntryBoss JSON")
             return self.events
 
-        # Strategy 2: Try EntryBoss HTML via cloudscraper (bypasses Cloudflare)
+        # Strategy 2: Try EntryBoss HTML via curl_cffi (bypasses Cloudflare)
         self._scrape_entryboss_cf()
 
         if self.events:
@@ -156,7 +188,7 @@ class AusCyclingScraper(BaseScraper):
         """Try Rails .json endpoint on AusCycling EntryBoss calendar."""
         data = None
 
-        # Try cloudscraper first (bypasses Cloudflare JS challenges)
+        # Try curl_cffi first (bypasses Cloudflare JS challenges)
         resp = self._make_cf_request(ENTRYBOSS_AC_JSON_URL, headers={
             "Accept": "application/json",
         })
@@ -164,7 +196,7 @@ class AusCyclingScraper(BaseScraper):
             try:
                 data = resp.json()
             except Exception:
-                logger.debug(f"[{self.SOURCE_NAME}] Cloudscraper .json response was not JSON")
+                logger.debug(f"[{self.SOURCE_NAME}] curl_cffi .json response was not JSON")
 
         # Try Playwright browser
         if not data:
@@ -201,21 +233,9 @@ class AusCyclingScraper(BaseScraper):
                 url = item.get("url", item.get("link", ""))
 
                 if name and len(name) > 3:
-                    discipline = self._guess_discipline(name, name)
-                    state = self._guess_state(url, name, name)
-                    self.events.append(CyclingEvent(
-                        name=name[:200],
-                        date=self._normalise_date(str(date_str)),
-                        end_date=None,
-                        venue="TBA",
-                        address="TBA",
-                        lat=None,
-                        lng=None,
-                        discipline=discipline,
-                        organiser="AusCycling",
-                        source=self.SOURCE_NAME,
+                    self.events.append(self._make_event(
+                        name, date=str(date_str),
                         url=url if url else ENTRYBOSS_AC_URL,
-                        state=state,
                     ))
             except Exception as e:
                 logger.debug(f"Failed to parse EntryBoss JSON item: {e}")
@@ -272,21 +292,9 @@ class AusCyclingScraper(BaseScraper):
                 # Look for date in parent element
                 date_str = self._extract_date_near_element(link)
 
-                discipline = self._guess_discipline(name, name)
-                state = self._guess_state(url, name, name)
-                self.events.append(CyclingEvent(
-                    name=name[:200],
-                    date=self._normalise_date(date_str),
-                    end_date=None,
-                    venue="TBA",
-                    address="TBA",
-                    lat=None,
-                    lng=None,
-                    discipline=discipline,
-                    organiser="AusCycling",
-                    source=self.SOURCE_NAME,
+                self.events.append(self._make_event(
+                    name, date=date_str,
                     url=url if url else source_url,
-                    state=state,
                 ))
             except Exception as e:
                 logger.debug(f"Failed to parse EntryBoss CF link: {e}")
@@ -307,21 +315,9 @@ class AusCyclingScraper(BaseScraper):
                         url = "https://entryboss.cc" + url
 
                     if name and len(name) > 3 and not self._is_header_row(name):
-                        discipline = self._guess_discipline(name, name)
-                        state = self._guess_state(url, name, name)
-                        self.events.append(CyclingEvent(
-                            name=name[:200],
-                            date=self._normalise_date(date_str),
-                            end_date=None,
-                            venue="TBA",
-                            address="TBA",
-                            lat=None,
-                            lng=None,
-                            discipline=discipline,
-                            organiser="AusCycling",
-                            source=self.SOURCE_NAME,
+                        self.events.append(self._make_event(
+                            name, date=date_str,
                             url=url if url else source_url,
-                            state=state,
                         ))
             except Exception as e:
                 logger.debug(f"Failed to parse EntryBoss CF table row: {e}")
@@ -422,21 +418,8 @@ class AusCyclingScraper(BaseScraper):
                 name = item.get("name", "")
                 if name and len(name) > 3:
                     url = item.get("url", "")
-                    discipline = self._guess_discipline(name, name)
-                    state = self._guess_state(url, name, name)
-                    self.events.append(CyclingEvent(
-                        name=name[:200],
-                        date=self._normalise_date(item.get("date", "")),
-                        end_date=None,
-                        venue="TBA",
-                        address="TBA",
-                        lat=None,
-                        lng=None,
-                        discipline=discipline,
-                        organiser="AusCycling",
-                        source=self.SOURCE_NAME,
-                        url=url,
-                        state=state,
+                    self.events.append(self._make_event(
+                        name, date=item.get("date", ""), url=url,
                     ))
             except Exception as e:
                 logger.debug(f"Failed to parse JS event: {e}")
@@ -489,23 +472,11 @@ class AusCyclingScraper(BaseScraper):
                 if url and not url.startswith("http"):
                     url = "https://auscycling.org.au" + url
 
-                discipline = self._guess_discipline(name, card.get_text())
-                state = self._guess_state(url, venue, name)
-
                 if name and len(name) > 3:
-                    self.events.append(CyclingEvent(
-                        name=name[:200],
-                        date=self._normalise_date(date_str),
-                        end_date=None,
+                    self.events.append(self._make_event(
+                        name, date=date_str, url=url,
                         venue=venue or "TBA",
-                        address=venue or "TBA",
-                        lat=None,
-                        lng=None,
-                        discipline=discipline,
-                        organiser="AusCycling",
-                        source=self.SOURCE_NAME,
-                        url=url,
-                        state=state,
+                        text=card.get_text(),
                     ))
             except Exception as e:
                 logger.debug(f"Failed to parse event card: {e}")
@@ -533,19 +504,10 @@ class AusCyclingScraper(BaseScraper):
                             url = "https://auscycling.org.au" + url
 
                         if name and not self._is_header_row(name):
-                            self.events.append(CyclingEvent(
-                                name=name,
-                                date=self._normalise_date(date_str),
-                                end_date=None,
-                                venue=venue,
-                                address=venue,
-                                lat=None,
-                                lng=None,
-                                discipline=discipline,
-                                organiser="AusCycling",
-                                source=self.SOURCE_NAME,
-                                url=url,
-                                state=state if state and len(state) <= 3 else self._guess_state(url, venue, name),
+                            self.events.append(self._make_event(
+                                name, date=date_str, url=url,
+                                venue=venue, discipline=discipline,
+                                state=state if state and len(state) <= 3 else None,
                             ))
                 except Exception as e:
                     logger.debug(f"Failed to parse row: {e}")
@@ -558,19 +520,9 @@ class AusCyclingScraper(BaseScraper):
                 venue = self._extract_text(item, ".venue, .location, [class*='venue']")
 
                 if name:
-                    self.events.append(CyclingEvent(
-                        name=name,
-                        date=self._normalise_date(date_str),
-                        end_date=None,
-                        venue=venue or "TBA",
-                        address=venue or "TBA",
-                        lat=None,
-                        lng=None,
-                        discipline=discipline,
-                        organiser="AusCycling",
-                        source=self.SOURCE_NAME,
-                        url=None,
-                        state=self._guess_state(None, venue, name),
+                    self.events.append(self._make_event(
+                        name, date=date_str,
+                        venue=venue or "TBA", discipline=discipline,
                     ))
             except Exception as e:
                 logger.debug(f"Failed to parse event item: {e}")
