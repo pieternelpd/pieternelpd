@@ -32,35 +32,6 @@ class CyclingEvent:
         return asdict(self)
 
 
-# JS to inject into pages to hide Playwright automation markers
-STEALTH_JS = """
-() => {
-    // Hide webdriver flag
-    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-
-    // Fake plugins array
-    Object.defineProperty(navigator, 'plugins', {
-        get: () => [1, 2, 3, 4, 5],
-    });
-
-    // Fake languages
-    Object.defineProperty(navigator, 'languages', {
-        get: () => ['en-US', 'en', 'en-AU'],
-    });
-
-    // Override permissions query
-    const originalQuery = window.navigator.permissions.query;
-    window.navigator.permissions.query = (parameters) =>
-        parameters.name === 'notifications'
-            ? Promise.resolve({ state: Notification.permission })
-            : originalQuery(parameters);
-
-    // Hide chrome automation indicators
-    window.chrome = { runtime: {} };
-}
-"""
-
-
 class BaseScraper:
     """Base class for event scrapers."""
 
@@ -83,7 +54,7 @@ class BaseScraper:
         headers.setdefault("User-Agent", (
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
             "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/122.0.0.0 Safari/537.36"
+            "Chrome/131.0.0.0 Safari/537.36"
         ))
         headers.setdefault("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
         headers.setdefault("Accept-Language", "en-US,en;q=0.9,en-AU;q=0.8")
@@ -137,8 +108,8 @@ class BaseScraper:
     def _fetch_page(self, url, wait_for=None, wait_ms=3000, retries=2):
         """Fetch a page using Playwright headless browser with stealth.
 
-        Injects stealth JS to hide automation markers before navigating.
-        Retries on failure. Returns rendered HTML or None.
+        Stealth evasions are applied automatically by playwright-stealth
+        at the context level. Retries on failure. Returns rendered HTML or None.
         """
         if not self._browser:
             logger.warning(f"[{self.SOURCE_NAME}] No browser available, falling back to requests")
@@ -149,9 +120,6 @@ class BaseScraper:
             page = None
             try:
                 page = self._browser.new_page()
-
-                # Inject stealth script before navigation
-                page.add_init_script(STEALTH_JS)
 
                 page.set_extra_http_headers({
                     "Accept-Language": "en-US,en;q=0.9,en-AU;q=0.8",
@@ -221,7 +189,6 @@ class BaseScraper:
             page = None
             try:
                 page = self._browser.new_page()
-                page.add_init_script(STEALTH_JS)
                 page.goto(url, wait_until="networkidle", timeout=30000)
                 page.wait_for_timeout(3000)
 
@@ -337,7 +304,6 @@ class BaseScraper:
         page = None
         try:
             page = self._browser.new_page()
-            page.add_init_script(STEALTH_JS)
             page.set_extra_http_headers({
                 "Accept-Language": "en-US,en;q=0.9,en-AU;q=0.8",
             })

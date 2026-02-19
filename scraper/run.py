@@ -22,10 +22,18 @@ OUTPUT_DIR = Path(__file__).parent.parent / "data"
 
 
 def _launch_browser():
-    """Launch a Playwright Chromium browser instance."""
+    """Launch a Playwright Chromium browser instance with stealth mode.
+
+    Uses playwright-stealth to automatically apply anti-detection evasions
+    (webdriver flag, navigator properties, chrome runtime, WebGL, media
+    codecs, etc.) to every page created in the context.
+    """
     try:
         from playwright.sync_api import sync_playwright
-        pw = sync_playwright().start()
+        from playwright_stealth import Stealth
+
+        stealth = Stealth()
+        pw = stealth.use_sync(sync_playwright()).start()
 
         launch_args = [
             "--no-sandbox",
@@ -55,17 +63,17 @@ def _launch_browser():
             user_agent=(
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                 "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/122.0.0.0 Safari/537.36"
+                "Chrome/131.0.0.0 Safari/537.36"
             ),
             viewport={"width": 1920, "height": 1080},
             locale="en-AU",
             timezone_id="Australia/Perth",
             color_scheme="light",
         )
-        logger.info("Playwright browser launched successfully")
+        logger.info("Playwright browser launched with stealth mode")
         return pw, browser, context
-    except ImportError:
-        logger.warning("Playwright not installed. Falling back to requests-only mode.")
+    except ImportError as e:
+        logger.warning(f"Playwright or playwright-stealth not installed ({e}). Falling back to requests-only mode.")
         return None, None, None
     except Exception as e:
         logger.warning(f"Failed to launch Playwright browser: {e}")
