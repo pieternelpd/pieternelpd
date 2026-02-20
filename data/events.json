@@ -11040,21 +11040,6 @@
     "description": null
   },
   {
-    "name": "2026 Masters Club Team Sprint Championships - NSW",
-    "date": "",
-    "end_date": null,
-    "venue": "TBA",
-    "address": "TBA",
-    "lat": null,
-    "lng": null,
-    "discipline": "road",
-    "organiser": "AusCycling",
-    "source": "auscycling",
-    "url": "https://entryboss.cc/races/29084",
-    "state": "NSW",
-    "description": null
-  },
-  {
     "name": "2026 Masters Club Team Pursuit Championships - NSW",
     "date": "",
     "end_date": null,
@@ -15656,6 +15641,21 @@
     "organiser": "AusCycling",
     "source": "auscycling",
     "url": "https://entryboss.cc/races/29082",
+    "state": "NSW",
+    "description": null
+  },
+  {
+    "name": "2026 Masters Club Team Sprint Championships - NSW",
+    "date": "",
+    "end_date": null,
+    "venue": "TBA",
+    "address": "TBA",
+    "lat": null,
+    "lng": null,
+    "discipline": "road",
+    "organiser": "AusCycling",
+    "source": "auscycling",
+    "url": "https://entryboss.cc/races/29084",
     "state": "NSW",
     "description": null
   },
@@ -20625,21 +20625,6 @@
     "description": null
   },
   {
-    "name": "Closing soon",
-    "date": "",
-    "end_date": null,
-    "venue": "TBA",
-    "address": "TBA",
-    "lat": null,
-    "lng": null,
-    "discipline": "road",
-    "organiser": "AusCycling",
-    "source": "auscycling",
-    "url": "https://entryboss.cc/races/29566",
-    "state": null,
-    "description": null
-  },
-  {
     "name": "Friday Night Beginner Come & Try / Open Track",
     "date": "",
     "end_date": null,
@@ -20650,7 +20635,7 @@
     "discipline": "track",
     "organiser": "AusCycling",
     "source": "auscycling",
-    "url": "https://entryboss.cc/races/29566",
+    "url": "https://entryboss.cc/races/29567",
     "state": null,
     "description": null
   },
@@ -24360,6 +24345,21 @@
     "description": null
   },
   {
+    "name": "Closing soon",
+    "date": "",
+    "end_date": null,
+    "venue": "WA",
+    "address": "WA",
+    "lat": null,
+    "lng": null,
+    "discipline": "road",
+    "organiser": "West Coast Masters CC",
+    "source": "wcmcc",
+    "url": "https://entryboss.cc/races/28883",
+    "state": "WA",
+    "description": null
+  },
+  {
     "name": "DOG HILL ROAD - Baldivis - Road Race",
     "date": "",
     "end_date": null,
@@ -24371,6 +24371,21 @@
     "organiser": "West Coast Masters CC",
     "source": "wcmcc",
     "url": "https://entryboss.cc/races/28883",
+    "state": "WA",
+    "description": null
+  },
+  {
+    "name": "Herne Hill Road Race",
+    "date": "",
+    "end_date": null,
+    "venue": "Herne Hill, WA 6056",
+    "address": "Herne Hill, WA 6056",
+    "lat": -31.835,
+    "lng": 116.025,
+    "discipline": "road",
+    "organiser": "West Coast Masters CC",
+    "source": "wcmcc",
+    "url": "https://entryboss.cc/races/29653",
     "state": "WA",
     "description": null
   },
@@ -24476,21 +24491,6 @@
     "organiser": "West Coast Masters CC",
     "source": "wcmcc",
     "url": "https://entryboss.cc/races/8546",
-    "state": "WA",
-    "description": null
-  },
-  {
-    "name": "Herne Hill road race",
-    "date": "",
-    "end_date": null,
-    "venue": "Herne Hill, WA 6056",
-    "address": "Herne Hill, WA 6056",
-    "lat": -31.835,
-    "lng": 116.025,
-    "discipline": "road",
-    "organiser": "West Coast Masters CC",
-    "source": "wcmcc",
-    "url": "https://entryboss.cc/races/8541",
     "state": "WA",
     "description": null
   },
