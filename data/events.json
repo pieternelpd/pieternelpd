@@ -1,20 +1,5 @@
 [
   {
-    "name": "2026 Oceania BMX Racing Championships",
-    "date": "",
-    "end_date": null,
-    "venue": "TBA",
-    "address": "TBA",
-    "lat": null,
-    "lng": null,
-    "discipline": "bmx",
-    "organiser": "AusCycling",
-    "source": "auscycling",
-    "url": "https://entryboss.cc/races/27955",
-    "state": null,
-    "description": null
-  },
-  {
     "name": "2026 AusCycling BMX Racing National Series Round 1 - Brisbane",
     "date": "",
     "end_date": null,
@@ -5640,6 +5625,21 @@
     "description": null
   },
   {
+    "name": "2026 Oceania BMX Racing Championships",
+    "date": "",
+    "end_date": null,
+    "venue": "TBA",
+    "address": "TBA",
+    "lat": null,
+    "lng": null,
+    "discipline": "bmx",
+    "organiser": "AusCycling",
+    "source": "auscycling",
+    "url": "https://entryboss.cc/races/27955",
+    "state": null,
+    "description": null
+  },
+  {
     "name": "2026 AusCycling BMX Racing State Series - WA RD3 Hills",
     "date": "",
     "end_date": null,
@@ -6762,21 +6762,6 @@
     "source": "auscycling",
     "url": "https://entryboss.cc/races/28388",
     "state": "WA",
-    "description": null
-  },
-  {
-    "name": "2026 Gold Coast CC | Summer Criterium Series - Round 2",
-    "date": "",
-    "end_date": null,
-    "venue": "TBA",
-    "address": "TBA",
-    "lat": null,
-    "lng": null,
-    "discipline": "criterium",
-    "organiser": "AusCycling",
-    "source": "auscycling",
-    "url": "https://entryboss.cc/races/29002",
-    "state": "QLD",
     "description": null
   },
   {
@@ -11025,6 +11010,21 @@
     "description": null
   },
   {
+    "name": "2026 Gold Coast CC | Summer Criterium Series - Round 2",
+    "date": "",
+    "end_date": null,
+    "venue": "TBA",
+    "address": "TBA",
+    "lat": null,
+    "lng": null,
+    "discipline": "criterium",
+    "organiser": "AusCycling",
+    "source": "auscycling",
+    "url": "https://entryboss.cc/races/29002",
+    "state": "QLD",
+    "description": null
+  },
+  {
     "name": "2026 AusCycling Masters Track Championships - NSW",
     "date": "",
     "end_date": null,
@@ -11036,21 +11036,6 @@
     "organiser": "AusCycling",
     "source": "auscycling",
     "url": "https://entryboss.cc/races/28595",
-    "state": "NSW",
-    "description": null
-  },
-  {
-    "name": "2026 Masters Club Team Pursuit Championships - NSW",
-    "date": "",
-    "end_date": null,
-    "venue": "TBA",
-    "address": "TBA",
-    "lat": null,
-    "lng": null,
-    "discipline": "road",
-    "organiser": "AusCycling",
-    "source": "auscycling",
-    "url": "https://entryboss.cc/races/29083",
     "state": "NSW",
     "description": null
   },
@@ -15656,6 +15641,21 @@
     "organiser": "AusCycling",
     "source": "auscycling",
     "url": "https://entryboss.cc/races/29084",
+    "state": "NSW",
+    "description": null
+  },
+  {
+    "name": "2026 Masters Club Team Pursuit Championships - NSW",
+    "date": "",
+    "end_date": null,
+    "venue": "TBA",
+    "address": "TBA",
+    "lat": null,
+    "lng": null,
+    "discipline": "road",
+    "organiser": "AusCycling",
+    "source": "auscycling",
+    "url": "https://entryboss.cc/races/29083",
     "state": "NSW",
     "description": null
   },
@@ -24345,21 +24345,6 @@
     "description": null
   },
   {
-    "name": "Closing soon",
-    "date": "",
-    "end_date": null,
-    "venue": "WA",
-    "address": "WA",
-    "lat": null,
-    "lng": null,
-    "discipline": "road",
-    "organiser": "West Coast Masters CC",
-    "source": "wcmcc",
-    "url": "https://entryboss.cc/races/28883",
-    "state": "WA",
-    "description": null
-  },
-  {
     "name": "DOG HILL ROAD - Baldivis - Road Race",
     "date": "",
     "end_date": null,
@@ -25736,6 +25721,21 @@
     "organiser": "West Coast Masters CC",
     "source": "wcmcc",
     "url": "https://entryboss.cc/races/29459",
+    "state": "WA",
+    "description": null
+  },
+  {
+    "name": "Closing soon",
+    "date": "",
+    "end_date": null,
+    "venue": "WA",
+    "address": "WA",
+    "lat": null,
+    "lng": null,
+    "discipline": "road",
+    "organiser": "West Coast Masters CC",
+    "source": "wcmcc",
+    "url": "https://entryboss.cc/races/28883",
     "state": "WA",
     "description": null
   },
