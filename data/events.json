@@ -1,21 +1,6 @@
 [
   {
-    "name": "2026 AusCycling BMX Racing National Series Round 1 - Brisbane",
-    "date": "",
-    "end_date": null,
-    "venue": "TBA",
-    "address": "TBA",
-    "lat": null,
-    "lng": null,
-    "discipline": "bmx",
-    "organiser": "AusCycling",
-    "source": "auscycling",
-    "url": "https://entryboss.cc/races/28181",
-    "state": "QLD",
-    "description": null
-  },
-  {
-    "name": "Enter",
+    "name": "Closing soon",
     "date": "",
     "end_date": null,
     "venue": "TBA",
@@ -86,6 +71,21 @@
     "organiser": "AusCycling",
     "source": "auscycling",
     "url": "https://entryboss.cc/races/28556",
+    "state": null,
+    "description": null
+  },
+  {
+    "name": "Enter",
+    "date": "",
+    "end_date": null,
+    "venue": "TBA",
+    "address": "TBA",
+    "lat": null,
+    "lng": null,
+    "discipline": "road",
+    "organiser": "AusCycling",
+    "source": "auscycling",
+    "url": "https://entryboss.cc/races/29043",
     "state": null,
     "description": null
   },
@@ -5640,6 +5640,21 @@
     "description": null
   },
   {
+    "name": "2026 AusCycling BMX Racing National Series Round 1 - Brisbane",
+    "date": "",
+    "end_date": null,
+    "venue": "TBA",
+    "address": "TBA",
+    "lat": null,
+    "lng": null,
+    "discipline": "bmx",
+    "organiser": "AusCycling",
+    "source": "auscycling",
+    "url": "https://entryboss.cc/races/28181",
+    "state": "QLD",
+    "description": null
+  },
+  {
     "name": "2026 AusCycling BMX Racing State Series - WA RD3 Hills",
     "date": "",
     "end_date": null,
@@ -6822,6 +6837,21 @@
     "source": "auscycling",
     "url": "https://entryboss.cc/races/28546",
     "state": "QLD",
+    "description": null
+  },
+  {
+    "name": "Open soon",
+    "date": "",
+    "end_date": null,
+    "venue": "TBA",
+    "address": "TBA",
+    "lat": null,
+    "lng": null,
+    "discipline": "road",
+    "organiser": "AusCycling",
+    "source": "auscycling",
+    "url": "https://entryboss.cc/races/29048",
+    "state": null,
     "description": null
   },
   {
@@ -11022,21 +11052,6 @@
     "source": "auscycling",
     "url": "https://entryboss.cc/races/29002",
     "state": "QLD",
-    "description": null
-  },
-  {
-    "name": "2026 AusCycling Masters Track Championships - NSW",
-    "date": "",
-    "end_date": null,
-    "venue": "TBA",
-    "address": "TBA",
-    "lat": null,
-    "lng": null,
-    "discipline": "track",
-    "organiser": "AusCycling",
-    "source": "auscycling",
-    "url": "https://entryboss.cc/races/28595",
-    "state": "NSW",
     "description": null
   },
   {
@@ -15630,6 +15645,21 @@
     "description": null
   },
   {
+    "name": "2026 AusCycling Masters Track Championships - NSW",
+    "date": "",
+    "end_date": null,
+    "venue": "TBA",
+    "address": "TBA",
+    "lat": null,
+    "lng": null,
+    "discipline": "track",
+    "organiser": "AusCycling",
+    "source": "auscycling",
+    "url": "https://entryboss.cc/races/28595",
+    "state": "NSW",
+    "description": null
+  },
+  {
     "name": "2026 Masters Club Team Sprint Championships - NSW",
     "date": "",
     "end_date": null,
@@ -15657,36 +15687,6 @@
     "source": "auscycling",
     "url": "https://entryboss.cc/races/29083",
     "state": "NSW",
-    "description": null
-  },
-  {
-    "name": "2026 AusCycling x Fairbrother Masters Track State Championships - Victoria",
-    "date": "",
-    "end_date": null,
-    "venue": "TBA",
-    "address": "TBA",
-    "lat": null,
-    "lng": null,
-    "discipline": "track",
-    "organiser": "AusCycling",
-    "source": "auscycling",
-    "url": "https://entryboss.cc/races/28428",
-    "state": "VIC",
-    "description": null
-  },
-  {
-    "name": "2026 AusCycling x Fairbrother U11, U13, U15 & U17 Track State Championships - Victoria",
-    "date": "",
-    "end_date": null,
-    "venue": "TBA",
-    "address": "TBA",
-    "lat": null,
-    "lng": null,
-    "discipline": "track",
-    "organiser": "AusCycling",
-    "source": "auscycling",
-    "url": "https://entryboss.cc/races/28429",
-    "state": "VIC",
     "description": null
   },
   {
@@ -20625,6 +20625,36 @@
     "description": null
   },
   {
+    "name": "2026 AusCycling x Fairbrother Masters Track State Championships - Victoria",
+    "date": "",
+    "end_date": null,
+    "venue": "TBA",
+    "address": "TBA",
+    "lat": null,
+    "lng": null,
+    "discipline": "track",
+    "organiser": "AusCycling",
+    "source": "auscycling",
+    "url": "https://entryboss.cc/races/28428",
+    "state": "VIC",
+    "description": null
+  },
+  {
+    "name": "2026 AusCycling x Fairbrother U11, U13, U15 & U17 Track State Championships - Victoria",
+    "date": "",
+    "end_date": null,
+    "venue": "TBA",
+    "address": "TBA",
+    "lat": null,
+    "lng": null,
+    "discipline": "track",
+    "organiser": "AusCycling",
+    "source": "auscycling",
+    "url": "https://entryboss.cc/races/28429",
+    "state": "VIC",
+    "description": null
+  },
+  {
     "name": "Friday Night Beginner Come & Try / Open Track",
     "date": "",
     "end_date": null,
@@ -24345,21 +24375,6 @@
     "description": null
   },
   {
-    "name": "DOG HILL ROAD - Baldivis - Road Race",
-    "date": "",
-    "end_date": null,
-    "venue": "Baldivis, WA 6171",
-    "address": "Baldivis, WA 6171",
-    "lat": -32.32,
-    "lng": 115.79,
-    "discipline": "road",
-    "organiser": "West Coast Masters CC",
-    "source": "wcmcc",
-    "url": "https://entryboss.cc/races/28883",
-    "state": "WA",
-    "description": null
-  },
-  {
     "name": "Herne Hill Road Race",
     "date": "",
     "end_date": null,
@@ -25725,13 +25740,13 @@
     "description": null
   },
   {
-    "name": "Closing soon",
+    "name": "DOG HILL ROAD - Baldivis - Road Race",
     "date": "",
     "end_date": null,
-    "venue": "WA",
-    "address": "WA",
-    "lat": null,
-    "lng": null,
+    "venue": "Baldivis, WA 6171",
+    "address": "Baldivis, WA 6171",
+    "lat": -32.32,
+    "lng": 115.79,
     "discipline": "road",
     "organiser": "West Coast Masters CC",
     "source": "wcmcc",
