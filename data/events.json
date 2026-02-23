@@ -1,20 +1,5 @@
 [
   {
-    "name": "Closing soon",
-    "date": "",
-    "end_date": null,
-    "venue": "TBA",
-    "address": "TBA",
-    "lat": null,
-    "lng": null,
-    "discipline": "road",
-    "organiser": "AusCycling",
-    "source": "auscycling",
-    "url": "https://entryboss.cc/races/28554",
-    "state": null,
-    "description": null
-  },
-  {
     "name": "2026 AusCycling MTB XCO National Series \u2013 Round 5",
     "date": "",
     "end_date": null,
@@ -6795,6 +6780,21 @@
     "description": null
   },
   {
+    "name": "Closing soon",
+    "date": "",
+    "end_date": null,
+    "venue": "TBA",
+    "address": "TBA",
+    "lat": null,
+    "lng": null,
+    "discipline": "road",
+    "organiser": "AusCycling",
+    "source": "auscycling",
+    "url": "https://entryboss.cc/races/29004",
+    "state": null,
+    "description": null
+  },
+  {
     "name": "2026 Gold Coast CC | Summer Criterium Series - Round 3",
     "date": "",
     "end_date": null,
@@ -6837,21 +6837,6 @@
     "source": "auscycling",
     "url": "https://entryboss.cc/races/28546",
     "state": "QLD",
-    "description": null
-  },
-  {
-    "name": "Open soon",
-    "date": "",
-    "end_date": null,
-    "venue": "TBA",
-    "address": "TBA",
-    "lat": null,
-    "lng": null,
-    "discipline": "road",
-    "organiser": "AusCycling",
-    "source": "auscycling",
-    "url": "https://entryboss.cc/races/29048",
-    "state": null,
     "description": null
   },
   {
@@ -25752,6 +25737,21 @@
     "source": "wcmcc",
     "url": "https://entryboss.cc/races/28883",
     "state": "WA",
+    "description": null
+  },
+  {
+    "name": "Open soon",
+    "date": "",
+    "end_date": null,
+    "venue": "TBA",
+    "address": "TBA",
+    "lat": null,
+    "lng": null,
+    "discipline": "road",
+    "organiser": "AusCycling",
+    "source": "auscycling",
+    "url": "https://entryboss.cc/races/29048",
+    "state": null,
     "description": null
   },
   {
