@@ -15,7 +15,7 @@
     "description": null
   },
   {
-    "name": "Enter",
+    "name": "Closing soon",
     "date": "",
     "end_date": null,
     "venue": "TBA",
@@ -71,6 +71,21 @@
     "organiser": "AusCycling",
     "source": "auscycling",
     "url": "https://entryboss.cc/races/28556",
+    "state": null,
+    "description": null
+  },
+  {
+    "name": "Enter",
+    "date": "",
+    "end_date": null,
+    "venue": "TBA",
+    "address": "TBA",
+    "lat": null,
+    "lng": null,
+    "discipline": "road",
+    "organiser": "AusCycling",
+    "source": "auscycling",
+    "url": "https://entryboss.cc/races/29043",
     "state": null,
     "description": null
   },
@@ -6791,21 +6806,6 @@
     "organiser": "AusCycling",
     "source": "auscycling",
     "url": "https://entryboss.cc/races/28464",
-    "state": null,
-    "description": null
-  },
-  {
-    "name": "Closing soon",
-    "date": "",
-    "end_date": null,
-    "venue": "TBA",
-    "address": "TBA",
-    "lat": null,
-    "lng": null,
-    "discipline": "road",
-    "organiser": "AusCycling",
-    "source": "auscycling",
-    "url": "https://entryboss.cc/races/29004",
     "state": null,
     "description": null
   },
