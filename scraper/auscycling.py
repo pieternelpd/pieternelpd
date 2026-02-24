@@ -135,28 +135,22 @@ class AusCyclingScraper(BaseScraper):
     def scrape(self) -> list[CyclingEvent]:
         self.events = []
 
-        # Strategy 1: Try EntryBoss AusCycling JSON endpoint
+        # Try all sources and merge results (don't short-circuit).
+        # EntryBoss and auscycling.org.au list different subsets of events.
+
+        # Source 1: EntryBoss AusCycling JSON endpoint
         self._try_entryboss_json()
+        logger.info(f"[{self.SOURCE_NAME}] After EntryBoss JSON: {len(self.events)} events")
 
-        if self.events:
-            logger.info(f"[{self.SOURCE_NAME}] Got {len(self.events)} events from EntryBoss JSON")
-            return self.events
-
-        # Strategy 2: Try EntryBoss HTML via curl_cffi (bypasses Cloudflare)
+        # Source 2: EntryBoss HTML via curl_cffi (bypasses Cloudflare)
         self._scrape_entryboss_cf()
+        logger.info(f"[{self.SOURCE_NAME}] After EntryBoss curl_cffi: {len(self.events)} events")
 
-        if self.events:
-            logger.info(f"[{self.SOURCE_NAME}] Got {len(self.events)} events from EntryBoss curl_cffi")
-            return self.events
-
-        # Strategy 3: Try EntryBoss AusCycling with JS extraction
+        # Source 3: EntryBoss with JS extraction (Playwright)
         self._scrape_entryboss_js()
+        logger.info(f"[{self.SOURCE_NAME}] After EntryBoss JS: {len(self.events)} events")
 
-        if self.events:
-            logger.info(f"[{self.SOURCE_NAME}] Got {len(self.events)} events from EntryBoss JS")
-            return self.events
-
-        # Strategy 4: Try AusCycling main events page with JS extraction
+        # Source 4: AusCycling main events page with JS extraction
         result = self._extract_via_js(
             EVENTS_URL,
             AUSCYCLING_EXTRACT_JS,
@@ -166,45 +160,65 @@ class AusCyclingScraper(BaseScraper):
         if result:
             self._process_js_result(result)
 
-        if self.events:
-            logger.info(f"[{self.SOURCE_NAME}] Got {len(self.events)} events from main page JS")
-            return self.events
-
-        # Strategy 5: Try main events page with HTML parsing
+        # Source 5: Main events page with HTML parsing
         html = self._fetch_page(EVENTS_URL, wait_for="[class*='event']", wait_ms=5000)
         if html:
             self._parse_events_page(html)
 
-        # Strategy 6: Try discipline-specific pages
+        # Source 6: Discipline-specific pages
         for discipline, url in DISCIPLINE_URLS.items():
             html = self._fetch_page(url, wait_for="table, [class*='event'], [class*='calendar']", wait_ms=5000)
             if html:
                 self._parse_discipline_page(html, discipline)
 
+        # Deduplicate within this scraper
+        self.events = self._deduplicate(self.events)
+
         logger.info(f"[{self.SOURCE_NAME}] Scraped {len(self.events)} events total")
         return self.events
 
+    def _deduplicate(self, events: list[CyclingEvent]) -> list[CyclingEvent]:
+        """Remove duplicate events by normalised name + date."""
+        seen = set()
+        unique = []
+        for event in events:
+            key = (event.name.lower().strip(), event.date)
+            if key not in seen:
+                seen.add(key)
+                unique.append(event)
+        return unique
+
     def _try_entryboss_json(self):
-        """Try Rails .json endpoint on AusCycling EntryBoss calendar."""
+        """Try Rails .json endpoints on EntryBoss calendars (national + state)."""
+        json_urls = [ENTRYBOSS_AC_JSON_URL]
+        # State calendars also support .json
+        for state_url in ENTRYBOSS_STATE_URLS.values():
+            json_urls.append(state_url + ".json")
+
+        for json_url in json_urls:
+            self._fetch_entryboss_json(json_url)
+
+    def _fetch_entryboss_json(self, json_url):
+        """Fetch and parse a single EntryBoss .json endpoint."""
         data = None
 
         # Try curl_cffi first (bypasses Cloudflare JS challenges)
-        resp = self._make_cf_request(ENTRYBOSS_AC_JSON_URL, headers={
+        resp = self._make_cf_request(json_url, headers={
             "Accept": "application/json",
         })
         if resp:
             try:
                 data = resp.json()
             except Exception:
-                logger.debug(f"[{self.SOURCE_NAME}] curl_cffi .json response was not JSON")
+                logger.debug(f"[{self.SOURCE_NAME}] curl_cffi .json response was not JSON for {json_url}")
 
         # Try Playwright browser
         if not data:
-            data = self._fetch_json_via_browser(ENTRYBOSS_AC_JSON_URL)
+            data = self._fetch_json_via_browser(json_url)
 
         # Try plain requests
         if not data:
-            resp = self._make_request(ENTRYBOSS_AC_JSON_URL, headers={
+            resp = self._make_request(json_url, headers={
                 "Accept": "application/json",
             })
             if resp:
@@ -214,7 +228,7 @@ class AusCyclingScraper(BaseScraper):
                     pass
 
         if not data:
-            logger.info(f"[{self.SOURCE_NAME}] EntryBoss .json endpoint not available")
+            logger.info(f"[{self.SOURCE_NAME}] EntryBoss .json not available: {json_url}")
             return
 
         races = data
@@ -224,6 +238,7 @@ class AusCyclingScraper(BaseScraper):
         if not isinstance(races, list):
             return
 
+        count = 0
         for item in races:
             try:
                 if not isinstance(item, dict):
@@ -237,8 +252,11 @@ class AusCyclingScraper(BaseScraper):
                         name, date=str(date_str),
                         url=url if url else ENTRYBOSS_AC_URL,
                     ))
+                    count += 1
             except Exception as e:
                 logger.debug(f"Failed to parse EntryBoss JSON item: {e}")
+
+        logger.info(f"[{self.SOURCE_NAME}] {json_url}: {count} events from JSON")
 
     def _scrape_entryboss_cf(self):
         """Scrape EntryBoss calendar HTML using curl_cffi to bypass Cloudflare."""
@@ -279,6 +297,7 @@ class AusCyclingScraper(BaseScraper):
             body_text = soup.get_text()[:500]
             logger.info(f"[{self.SOURCE_NAME}] Page text preview: {body_text[:300]}")
 
+        found_links = 0
         for link in race_links:
             try:
                 name = link.get_text(strip=True)
@@ -296,10 +315,11 @@ class AusCyclingScraper(BaseScraper):
                     name, date=date_str,
                     url=url if url else source_url,
                 ))
+                found_links += 1
             except Exception as e:
                 logger.debug(f"Failed to parse EntryBoss CF link: {e}")
 
-        if self.events:
+        if found_links:
             return
 
         # Fallback: try table rows

@@ -1,11 +1,13 @@
-"""Scraper for West Coast Masters Cycling Council events via EntryBoss.
+"""Scraper for West Coast Masters Cycling Council events.
 
-EntryBoss is a Rails app. We try:
-1. Rails .json endpoint (most reliable if available)
-2. Playwright JS extraction from rendered page
-3. BeautifulSoup HTML parsing as fallback
+Tries multiple sources in order of reliability:
+1. EntryBoss JSON + HTML (calendar/westcoastmasterscc)
+2. WestCycle individual event pages (WordPress + The Events Calendar)
+3. WCMCC website calendar pages
+4. WestCycle club listing page
 """
 
+import json
 import logging
 import re
 from bs4 import BeautifulSoup
@@ -26,8 +28,10 @@ WCMCC_VENUES = {
     "herne hill": {"address": "Herne Hill, WA 6056", "lat": -31.8350, "lng": 116.0250},
     "chidlow": {"address": "Chidlow, WA 6556", "lat": -31.8600, "lng": 116.2700},
     "doghill": {"address": "Doghill Rd, Baldivis WA 6171", "lat": -32.3200, "lng": 115.7900},
+    "dog hill": {"address": "Doghill Rd, Baldivis WA 6171", "lat": -32.3200, "lng": 115.7900},
     "baldivis": {"address": "Baldivis, WA 6171", "lat": -32.3200, "lng": 115.7900},
-    "splendid park": {"address": "Splendid Park, WA", "lat": -31.9500, "lng": 115.8600},
+    "splendid park": {"address": "Splendid Park, Yanchep WA 6035", "lat": -31.5470, "lng": 115.6310},
+    "yanchep": {"address": "Splendid Park, Yanchep WA 6035", "lat": -31.5470, "lng": 115.6310},
 }
 
 ENTRYBOSS_URL = "https://entryboss.cc/calendar/westcoastmasterscc"
@@ -35,9 +39,25 @@ ENTRYBOSS_JSON_URL = "https://entryboss.cc/calendar/westcoastmasterscc.json"
 
 CALENDAR_URLS = [
     "https://www.wcmasterscycling.asn.au/racing/calendar/",
+    "https://www.wcmasterscycling.asn.au/calendar/calendar.htm",
 ]
 
-WESTCYCLE_URL = "https://westcycle.org.au/event_club/wcmcc-west-coast-masters-cycling-council/"
+WESTCYCLE_CLUB_URL = "https://westcycle.org.au/event_club/wcmcc-west-coast-masters-cycling-council/"
+
+# Individual WestCycle event pages for each WCMCC venue (recurring events).
+# These use WordPress + The Events Calendar plugin, so each page shows the
+# next upcoming instance with structured data (JSON-LD).
+WESTCYCLE_EVENT_URLS = [
+    "https://westcycle.org.au/wc-event/west-coast-masters-wangara-criterium-2/",
+    "https://westcycle.org.au/wc-event/west-coast-masters-bibra-lake-criterium/",
+    "https://westcycle.org.au/wc-event/west-coast-masters-kewdale-criterium/",
+    "https://westcycle.org.au/wc-event/west-coast-masters-splendid-park-criterium/",
+    "https://westcycle.org.au/wc-event/west-coast-masters-herne-hill-chopper-marshal-family-road-race/",
+    "https://westcycle.org.au/wc-event/west-coast-masters-chidlow-road-race/",
+    "https://westcycle.org.au/wc-event/west-coast-masters-dog-hill-road-race/",
+    "https://westcycle.org.au/wc-event/wcmcc-kewdale-graded-criterium/",
+    "https://westcycle.org.au/wc-event/bibra-lake-criterium/",
+]
 
 # JS to extract race data from EntryBoss rendered page
 ENTRYBOSS_EXTRACT_JS = """
@@ -145,47 +165,55 @@ class WestCoastMastersScraper(BaseScraper):
     def scrape(self) -> list[CyclingEvent]:
         self.events = []
 
-        # Strategy 1: Try EntryBoss Rails .json endpoint
+        # Try all sources and merge (don't short-circuit).
+        # EntryBoss and the WCMCC website list different subsets of events.
+
+        # Source 1: EntryBoss Rails .json endpoint
         self._try_entryboss_json()
+        logger.info(f"[{self.SOURCE_NAME}] After EntryBoss JSON: {len(self.events)} events")
 
-        if self.events:
-            logger.info(f"[{self.SOURCE_NAME}] Got {len(self.events)} events from EntryBoss JSON")
-            return self.events
-
-        # Strategy 2: Try EntryBoss HTML via curl_cffi (bypasses Cloudflare)
+        # Source 2: EntryBoss HTML via curl_cffi (bypasses Cloudflare)
         self._scrape_entryboss_cf()
+        logger.info(f"[{self.SOURCE_NAME}] After EntryBoss curl_cffi: {len(self.events)} events")
 
-        if self.events:
-            logger.info(f"[{self.SOURCE_NAME}] Got {len(self.events)} events from EntryBoss curl_cffi")
-            return self.events
-
-        # Strategy 3: Try EntryBoss with JS extraction (Playwright)
+        # Source 3: EntryBoss with JS extraction (Playwright)
         self._scrape_entryboss_js()
+        logger.info(f"[{self.SOURCE_NAME}] After EntryBoss JS: {len(self.events)} events")
 
-        if self.events:
-            logger.info(f"[{self.SOURCE_NAME}] Got {len(self.events)} events from EntryBoss JS")
-            return self.events
-
-        # Strategy 4: Try EntryBoss with HTML parsing
+        # Source 4: EntryBoss with HTML parsing
         self._scrape_entryboss_html()
 
-        if self.events:
-            logger.info(f"[{self.SOURCE_NAME}] Got {len(self.events)} events from EntryBoss HTML")
-            return self.events
+        # Source 5: WestCycle individual event pages (one per venue)
+        self._scrape_westcycle_events()
+        logger.info(f"[{self.SOURCE_NAME}] After WestCycle events: {len(self.events)} events")
 
-        # Strategy 5: Try WCMCC calendar pages
+        # Source 6: WCMCC calendar pages
         for url in CALENDAR_URLS:
             html = self._fetch_page(url, wait_for="table, .tribe-events, article", wait_ms=3000)
             if html:
                 self._parse_calendar(html, url)
 
-        # Strategy 6: Try WestCycle
-        html = self._fetch_page(WESTCYCLE_URL, wait_for=".event, article", wait_ms=3000)
+        # Source 7: WestCycle club listing page
+        html = self._fetch_page(WESTCYCLE_CLUB_URL, wait_for=".event, article", wait_ms=3000)
         if html:
-            self._parse_westcycle(html)
+            self._parse_westcycle_listing(html)
+
+        # Deduplicate within this scraper
+        self.events = self._deduplicate(self.events)
 
         logger.info(f"[{self.SOURCE_NAME}] Scraped {len(self.events)} events total")
         return self.events
+
+    def _deduplicate(self, events: list[CyclingEvent]) -> list[CyclingEvent]:
+        """Remove duplicate events by normalised name + date."""
+        seen = set()
+        unique = []
+        for event in events:
+            key = (event.name.lower().strip(), event.date)
+            if key not in seen:
+                seen.add(key)
+                unique.append(event)
+        return unique
 
     def _try_entryboss_json(self):
         """Try Rails .json endpoint on EntryBoss (common Rails convention)."""
@@ -274,6 +302,7 @@ class WestCoastMastersScraper(BaseScraper):
             body_text = soup.get_text()[:500]
             logger.info(f"[{self.SOURCE_NAME}] Page text preview: {body_text[:300]}")
 
+        found_links = 0
         for link in race_links:
             try:
                 name = link.get_text(strip=True)
@@ -290,10 +319,11 @@ class WestCoastMastersScraper(BaseScraper):
                 self.events.append(self._make_event(
                     name, date=date_str, url=url,
                 ))
+                found_links += 1
             except Exception as e:
                 logger.debug(f"Failed to parse EntryBoss CF link: {e}")
 
-        if self.events:
+        if found_links:
             return
 
         # Fallback: try table rows
@@ -388,6 +418,7 @@ class WestCoastMastersScraper(BaseScraper):
         if race_links:
             logger.info(f"[{self.SOURCE_NAME}] Found {len(race_links)} race links")
 
+        found_links = 0
         for link in race_links:
             try:
                 name = link.get_text(strip=True)
@@ -417,10 +448,11 @@ class WestCoastMastersScraper(BaseScraper):
                 self.events.append(self._make_event(
                     name, date=date_str, url=url,
                 ))
+                found_links += 1
             except Exception as e:
                 logger.debug(f"Failed to parse EntryBoss link: {e}")
 
-        if self.events:
+        if found_links:
             return
 
         # Fallback: try table rows
@@ -441,6 +473,93 @@ class WestCoastMastersScraper(BaseScraper):
                         ))
             except Exception as e:
                 logger.debug(f"Failed to parse table row: {e}")
+
+    def _scrape_westcycle_events(self):
+        """Scrape individual WestCycle event pages for each WCMCC venue.
+
+        WestCycle uses WordPress + The Events Calendar plugin. Each event
+        page shows the next upcoming instance and includes JSON-LD
+        structured data with the event date, name, and location.
+        """
+        for event_url in WESTCYCLE_EVENT_URLS:
+            html = self._fetch_page(
+                event_url,
+                wait_for=".tribe-events-single, .type-tribe_events, article",
+                wait_ms=3000,
+            )
+            if not html:
+                # Try curl_cffi as fallback
+                resp = self._make_cf_request(event_url)
+                if resp:
+                    html = resp.text
+            if not html:
+                continue
+
+            soup = BeautifulSoup(html, "lxml")
+            title = soup.title.string if soup.title else ""
+
+            # Skip Cloudflare challenge pages
+            if "just a moment" in title.lower() or "challenge" in title.lower():
+                continue
+
+            # Strategy A: JSON-LD structured data (most reliable)
+            for script in soup.select('script[type="application/ld+json"]'):
+                try:
+                    data = json.loads(script.string or "")
+                    # Can be a single object or list
+                    items = data if isinstance(data, list) else [data]
+                    for item in items:
+                        if item.get("@type") == "Event":
+                            name = item.get("name", "")
+                            date_str = item.get("startDate", "")
+                            location = item.get("location", {})
+                            venue = ""
+                            if isinstance(location, dict):
+                                venue = location.get("name", "")
+                            if name:
+                                self.events.append(self._make_event(
+                                    name, date=date_str, url=event_url,
+                                    venue=venue,
+                                ))
+                except (json.JSONDecodeError, TypeError):
+                    continue
+
+            # Strategy B: HTML parsing (The Events Calendar markup)
+            name = ""
+            date_str = ""
+            venue = ""
+
+            title_el = soup.select_one(
+                ".tribe-events-single-event-title, "
+                ".tribe-events-schedule h1, "
+                "h1.entry-title, "
+                "h1[class*='title']"
+            )
+            if title_el:
+                name = title_el.get_text(strip=True)
+
+            date_el = soup.select_one(
+                ".tribe-events-start-date, "
+                ".tribe-events-schedule .tribe-events-abbr, "
+                "abbr.tribe-events-abbr, "
+                ".tribe-events-start-datetime, "
+                "time[datetime]"
+            )
+            if date_el:
+                date_str = date_el.get("title", "") or date_el.get("datetime", "") or date_el.get_text(strip=True)
+
+            venue_el = soup.select_one(
+                ".tribe-venue, "
+                ".tribe-events-meta-group-venue .tribe-venue, "
+                ".tribe-venue-name"
+            )
+            if venue_el:
+                venue = venue_el.get_text(strip=True)
+
+            if name and not self._is_header(name):
+                self.events.append(self._make_event(
+                    name, date=date_str, url=event_url, venue=venue,
+                ))
 
     def _parse_calendar(self, html: str, source_url: str):
         """Parse WCMCC calendar page (rendered HTML)."""
@@ -491,11 +610,18 @@ class WestCoastMastersScraper(BaseScraper):
             except Exception as e:
                 logger.debug(f"Failed to parse calendar item: {e}")
 
-    def _parse_westcycle(self, html: str):
-        """Parse WestCycle event listings (rendered HTML)."""
+    def _parse_westcycle_listing(self, html: str):
+        """Parse WestCycle club event listings page (rendered HTML).
+
+        This parses the WCMCC-specific club page on WestCycle, so all
+        events on the page are WCMCC events.
+        """
         soup = BeautifulSoup(html, "lxml")
 
-        for item in soup.select(".wc-event, .event-listing, article, .type-wc-event, [class*='event']"):
+        for item in soup.select(
+            ".wc-event, .event-listing, article, .type-wc-event, "
+            ".type-tribe_events, [class*='event']"
+        ):
             try:
                 name = ""
                 date_str = ""
@@ -505,9 +631,16 @@ class WestCoastMastersScraper(BaseScraper):
                 if title_el:
                     name = title_el.get_text(strip=True)
 
-                date_el = item.select_one(".event-date, time, .date, [class*='date']")
+                date_el = item.select_one(
+                    ".event-date, time, .date, [class*='date'], "
+                    "abbr.tribe-events-abbr"
+                )
                 if date_el:
-                    date_str = date_el.get("datetime", date_el.get_text(strip=True))
+                    date_str = (
+                        date_el.get("datetime", "")
+                        or date_el.get("title", "")
+                        or date_el.get_text(strip=True)
+                    )
 
                 venue_el = item.select_one(".event-venue, .venue, .location, [class*='venue']")
                 if venue_el:
@@ -516,12 +649,13 @@ class WestCoastMastersScraper(BaseScraper):
                 link = item.select_one("a[href]")
                 url = link["href"] if link else None
 
-                if name and ("wcm" in name.lower() or "west coast" in name.lower()):
+                # All events on the WCMCC club page are relevant
+                if name and len(name) > 3 and not self._is_header(name):
                     self.events.append(self._make_event(
                         name, date=date_str, url=url, venue=venue,
                     ))
             except Exception as e:
-                logger.debug(f"Failed to parse WestCycle item: {e}")
+                logger.debug(f"Failed to parse WestCycle listing item: {e}")
 
     def _match_venue(self, text: str) -> dict:
         """Match text against known WCMCC venues."""
