@@ -3,9 +3,6 @@ name: Scrape Events & Deploy to GitHub Pages
 on:
   push:
     branches: ["main"]
-  schedule:
-    # Run scrapers daily at 6am AWST (10pm UTC previous day)
-    - cron: "0 22 * * *"
   workflow_dispatch:
 
 permissions:
